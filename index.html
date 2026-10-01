@@ -439,9 +439,25 @@ function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTim
 const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
 
 let db=null,mcp=null,pollT=null;
-let cur=(()=>{const d=new Date();return {y:d.getFullYear(),m:d.getMonth()+1};})();
+// 공개 페이지에서는 로그인 저장소를 쓸 수 없으므로, 확정한 2026년 8월 정산은 기본값으로 보관한다.
+// 이후 로그인 저장소가 연결되면 해당 데이터가 우선 적용된다.
+let cur={y:2026,m:8};
 let monthData={},prevMonthData={},thisMonthData={},refs=[];
-let allMonths={},allClose={},cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{}};
+let allMonths={},allClose={
+  "2026-08":{
+    manual:{
+      rev_total:26672200,
+      "rev:건한":12097600,
+      "rev:근영":10271100,
+      "rev:혜진":4303500,
+      rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000,
+      card_samsung:1709636,card_woori:691170,card_hana:363496,salary:2417500,common:0
+    },
+    extras:[],
+    memo:"",
+    closedAt:Date.UTC(2026,7,31,12)
+  }
+},cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{}};
 
 /* ---------- theme ---------- */
 function isDark(){const r=document.documentElement;if(r.classList.contains("t-dark"))return true;if(r.classList.contains("t-light"))return false;const t=r.getAttribute("data-theme");return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;}
