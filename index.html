@@ -160,13 +160,14 @@ tr.dim td{opacity:.45}
 .crow .cl b{font-weight:500}
 .crow .cl small{font-size:.75rem;color:var(--muted)}
 .crow input{text-align:right;font-variant-numeric:tabular-nums;width:100%}
-.crow input.ov{border-color:var(--warn);background:var(--warn-soft)}
+.crow input.ov{border-color:var(--accent);background:var(--accent-soft)}
+.crow output{display:block;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;padding:9px 12px;border-radius:10px;background:var(--surface2);color:var(--accent)}
 .crow .rst{min-height:36px;min-width:36px;padding:0;font-size:.8rem;border:none;background:none;color:var(--muted)}
 .src{font-size:.68rem;border-radius:6px;padding:1px 6px;font-weight:600;align-self:flex-start}
 .src.pos{background:var(--accent-soft);color:var(--accent)}
 .src.gmail{background:#E8F0FE;color:#1A56C4}
 .src.default{background:var(--surface2);color:var(--muted);border:1px solid var(--line)}
-.src.manual{background:var(--warn-soft);color:var(--warn)}
+.src.manual{background:var(--accent-soft);color:var(--accent)}
 .src.none{background:var(--alert-soft);color:var(--alert)}
 :root[data-theme="dark"]:not(.t-light) .src.gmail,:root.t-dark .src.gmail{background:#1B2A44;color:#8AB4F8}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]):not(.t-light) .src.gmail{background:#1B2A44;color:#8AB4F8}}
@@ -258,7 +259,7 @@ tr.dim td{opacity:.45}
     <div class="page-h"><div><h1>안녕하세요 👋</h1><p id="homeDate">—</p></div></div>
     <div class="tiles">
       <a class="tile" href="#sales"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-chart"/></svg></div><h3>이번 달 매출</h3></div><div class="t-v" id="hSales">₩0</div><div class="t-s" id="hSalesS">—</div></a>
-      <a class="tile" href="#sales"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-chart"/></svg></div><h3>이번 달 순이익</h3></div><div class="t-v" id="hToday">₩0</div><div class="t-s" id="hTodayS">—</div></a>
+      <a class="tile" href="#sales"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-chart"/></svg></div><h3>건한 · 근영 순수익</h3></div><div class="t-v" id="hToday">—</div><div class="t-s" id="hTodayS">—</div></a>
       <a class="tile" href="#reservations"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-cal"/></svg></div><h3>예약 현황</h3></div><div class="t-v" id="hResv">0명</div><div class="t-s" id="hResvS">오늘 방문 예정</div></a>
       <a class="tile" href="#refs"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-img"/></svg></div><h3>고객 레퍼런스</h3></div><div class="t-v" id="hRefs">0건</div><div class="t-s">확인하지 않은 새 레퍼런스</div></a>
       <a class="tile" href="#import"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-up"/></svg></div><h3>매출 데이터 입력</h3></div><div class="t-v" style="font-size:1rem" id="hImport">핸드SOS 엑셀 올리기</div><div class="t-s" id="hImportS">열 지정 후 한 번에 반영</div></a>
@@ -283,9 +284,9 @@ tr.dim td{opacity:.45}
       <div class="kpi"><span class="lbl">객단가</span><span class="v" id="kAvg">₩0</span><span class="s" id="kAvgS">영업일 0일</span></div>
     </div>
     <div class="kpis">
-      <div class="kpi"><span class="lbl">총 비용</span><span class="v" id="pCost">₩0</span><span class="s" id="pCostS">—</span></div>
-      <div class="kpi"><span class="lbl">순이익</span><span class="v" id="pProfit">₩0</span><span class="s" id="pProfitS">—</span></div>
-      <div class="kpi"><span class="lbl">이익률</span><span class="v" id="pMargin">—</span><span class="s" id="pMarginS">순이익 ÷ 총 매출</span></div>
+      <div class="kpi"><span class="lbl">총 공동비용</span><span class="v" id="pCost">₩0</span><span class="s" id="pCostS">—</span></div>
+      <div class="kpi"><span class="lbl">건한 순수익</span><span class="v" id="pProfit">₩0</span><span class="s" id="pProfitS">—</span></div>
+      <div class="kpi"><span class="lbl">근영 순수익</span><span class="v" id="pMargin">₩0</span><span class="s" id="pMarginS">—</span></div>
       <div class="kpi"><span class="lbl">정산 상태</span><span class="v" id="pState" style="font-size:1.05rem">—</span><span class="s"><a href="#close" style="color:var(--accent)">월 정산 열기 →</a></span></div>
     </div>
     <div class="grid2">
@@ -294,7 +295,7 @@ tr.dim td{opacity:.45}
     </div>
     <div class="card"><div class="card-h"><h2>디자이너별 고객 수</h2><span class="lbl" id="dcNote"></span></div><div class="bars" id="dcBars"></div></div>
     <div class="card">
-      <div class="card-h"><h2>월별 매출 · 손익 추이</h2><div class="legend"><span><span class="sw" style="background:var(--accent)"></span>총매출</span><span><span class="sw" style="background:var(--muted)"></span>총비용</span><span><span class="sw" style="background:var(--naver);border-radius:50%"></span>전체 순이익</span><span><span class="sw" style="background:#E58E26;border-radius:50%"></span>건한 순수익</span><span><span class="sw" style="background:#8B5CB8;border-radius:50%"></span>근영 순수익</span></div></div>
+      <div class="card-h"><h2>월별 매출 · 손익 추이</h2><div class="legend"><span><span class="sw" style="background:var(--accent)"></span>총매출</span><span><span class="sw" style="background:var(--muted)"></span>총공동비용</span><span><span class="sw" style="background:#477F78;border-radius:50%"></span>건한 순수익</span><span><span class="sw" style="background:#7A719B;border-radius:50%"></span>근영 순수익</span></div></div>
       <div class="chartbox" id="trend"></div>
       <div class="status" id="dbStatus">데이터 불러오는 중…</div>
     </div>
@@ -319,7 +320,7 @@ tr.dim td{opacity:.45}
     <div class="sumbar">
       <div><div class="lbl">총 매출</div><div class="v" id="sRev">₩0</div></div>
       <div><div class="lbl">총 비용</div><div class="v" id="sCost">₩0</div></div>
-      <div><div class="lbl">순이익</div><div class="v" id="sProfit">₩0</div></div>
+      <div><div class="lbl">건한 · 근영 순수익</div><div class="v" id="sProfit">—</div></div>
       <button class="primary" id="cSave">정산 저장</button>
     </div>
     <div class="status" id="cStatus"></div>
@@ -533,7 +534,8 @@ function monthPL(mk,draft){
   ex.forEach(x=>items.push([x.label||"추가 비용",+x.amount]));
   const cost=items.reduce((s,[,v])=>s+v,0);
   const geonhan=fieldVal(mk,"rev:건한",draft).v,geunyeong=fieldVal(mk,"rev:근영",draft).v,hyejin=fieldVal(mk,"rev:혜진",draft).v;
-  return{rev,cost,profit:rev-cost,items,designers:cfg.designers.map(n=>[n,fieldVal(mk,"rev:"+n,draft).v]),partners:{건한:geonhan+hyejin/2-cost/2,근영:geunyeong+hyejin/2-cost/2}};
+  const partnerGross={건한:geonhan+hyejin/2,근영:geunyeong+hyejin/2};
+  return{rev,cost,profit:rev-cost,items,designers:cfg.designers.map(n=>[n,fieldVal(mk,"rev:"+n,draft).v]),partnerGross,partners:{건한:partnerGross.건한-cost/2,근영:partnerGross.근영-cost/2}};
 }
 function designerClientCount(mk,name){return (allMonths[mk]?.people?.[name]||[]).length;}
 const SRC={pos:"POS",gmail:"Gmail",default:"기본값",manual:"직접 입력",none:"미입력"};
@@ -544,10 +546,10 @@ function barList(rows,total,color){
 function renderPL(){
   const mk=mKey(cur.y,cur.m),pl=monthPL(mk),c=allClose[mk];
   $("pCost").textContent=won(pl.cost);$("pCostS").textContent=`${pl.items.filter(x=>x[1]).length}개 항목`;
-  $("pProfit").textContent=won(pl.profit);$("pProfit").className="v "+(pl.profit>=0?"profit-pos":"profit-neg");
-  const p=shift(cur.y,cur.m,-1),pp=monthPL(mKey(p.y,p.m));
-  $("pProfitS").textContent=pp.rev||pp.cost?`전월 ${won(pp.profit)}`:"전월 데이터 없음";
-  $("pMargin").textContent=pl.rev?(pl.profit/pl.rev*100).toFixed(1)+"%":"—";
+  $("pProfit").textContent=won(pl.partners.건한);$("pProfit").className="v "+(pl.partners.건한>=0?"profit-pos":"profit-neg");
+  $("pProfitS").textContent=`총매출 ${won(pl.partnerGross.건한)} − 비용 1/2`;
+  $("pMargin").textContent=won(pl.partners.근영);$("pMargin").className="v "+(pl.partners.근영>=0?"profit-pos":"profit-neg");
+  $("pMarginS").textContent=`총매출 ${won(pl.partnerGross.근영)} − 비용 1/2`;
   $("pState").innerHTML=c&&c.closedAt?`<span class="pill">정산 완료</span>`:`<span class="pill warn">정산 전</span>`;
   const ds=pl.designers.filter(x=>x[1]),dsum=ds.reduce((s,x)=>s+x[1],0);
   $("dsBars").innerHTML=ds.length?barList(ds.sort((a,b)=>b[1]-a[1]),dsum,"var(--accent)"):`<div class="empty">핸드SOS 엑셀에서 ‘담당 디자이너’ 열을 지정하거나 월 정산에서 직접 입력하세요</div>`;
@@ -565,24 +567,21 @@ function renderTrend(){
   if(!keys.length){$("trend").innerHTML=`<div class="empty">두 달 이상 정산하면 추이가 보입니다</div>`;return;}
   const data=keys.map(k=>({k,...monthPL(k)}));
   const W=760,H=240,L=52,R=8,T=14,B=28,iw=W-L-R,ih=H-T-B,gw=iw/Math.max(keys.length,6);
-  const hi=Math.max(1,...data.map(d=>Math.max(d.rev,d.cost,d.partners.건한,d.partners.근영))),lo=Math.min(0,...data.map(d=>Math.min(d.profit,d.partners.건한,d.partners.근영)));
+  const hi=Math.max(1,...data.map(d=>Math.max(d.rev,d.cost,d.partners.건한,d.partners.근영))),lo=Math.min(0,...data.map(d=>Math.min(d.partners.건한,d.partners.근영)));
   const step=niceStep(hi-lo),top=Math.ceil(hi/step)*step,bot=Math.floor(lo/step)*step,y=v=>T+ih-((v-bot)/(top-bot))*ih;
   let g="";for(let v=bot;v<=top;v+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.abs(v)>=10000?(v/10000).toLocaleString("ko-KR")+"만":v}</text>`;
-  let pts=[],geonhanPts=[],geunyeongPts=[];
+  let geonhanPts=[],geunyeongPts=[];
   data.forEach((d,i)=>{const x0=L+i*gw,bw=gw*.3;
     g+=`<rect x="${x0+gw*.18}" y="${y(d.rev)}" width="${bw}" height="${y(0)-y(d.rev)}" fill="var(--accent)" rx="2"><title>${d.k} 매출 ${won(d.rev)}</title></rect>`;
     g+=`<rect x="${x0+gw*.18+bw+2}" y="${y(d.cost)}" width="${bw}" height="${y(0)-y(d.cost)}" fill="var(--muted)" opacity=".55" rx="2"><title>${d.k} 비용 ${won(d.cost)}</title></rect>`;
-    pts.push([x0+gw/2,y(d.profit),d]);
     geonhanPts.push([x0+gw/2,y(d.partners.건한),d]);
     geunyeongPts.push([x0+gw/2,y(d.partners.근영),d]);
     g+=`<text x="${x0+gw/2}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${+d.k.slice(5)}월</text>`;});
-  if(pts.length>1)g+=`<polyline points="${pts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="var(--naver)" stroke-width="2"/>`;
-  if(geonhanPts.length>1)g+=`<polyline points="${geonhanPts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="#E58E26" stroke-width="2"/>`;
-  if(geunyeongPts.length>1)g+=`<polyline points="${geunyeongPts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="#8B5CB8" stroke-width="2"/>`;
-  pts.forEach(([x,yy,d],i)=>g+=`<circle cx="${x}" cy="${yy}" r="${i===pts.length-1?5:3.5}" fill="var(--naver)" stroke="var(--surface)" stroke-width="1.5"><title>${d.k} 순이익 ${won(d.profit)}</title></circle>`);
-  geonhanPts.forEach(([x,yy,d])=>g+=`<circle cx="${x}" cy="${yy}" r="3" fill="#E58E26" stroke="var(--surface)" stroke-width="1"><title>${d.k} 건한 순수익 ${won(d.partners.건한)}</title></circle>`);
-  geunyeongPts.forEach(([x,yy,d])=>g+=`<circle cx="${x}" cy="${yy}" r="3" fill="#8B5CB8" stroke="var(--surface)" stroke-width="1"><title>${d.k} 근영 순수익 ${won(d.partners.근영)}</title></circle>`);
-  $("trend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="월별 매출, 비용, 전체와 디자이너별 순수익">${g}</svg>`;
+  if(geonhanPts.length>1)g+=`<polyline points="${geonhanPts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="#477F78" stroke-width="2"/>`;
+  if(geunyeongPts.length>1)g+=`<polyline points="${geunyeongPts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="#7A719B" stroke-width="2"/>`;
+  geonhanPts.forEach(([x,yy,d])=>g+=`<circle cx="${x}" cy="${yy}" r="3" fill="#477F78" stroke="var(--surface)" stroke-width="1"><title>${d.k} 건한 순수익 ${won(d.partners.건한)}</title></circle>`);
+  geunyeongPts.forEach(([x,yy,d])=>g+=`<circle cx="${x}" cy="${yy}" r="3" fill="#7A719B" stroke="var(--surface)" stroke-width="1"><title>${d.k} 근영 순수익 ${won(d.partners.근영)}</title></circle>`);
+  $("trend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="월별 매출, 공동비용, 디자이너별 순수익">${g}</svg>`;
 }
 
 /* close form */
@@ -595,11 +594,15 @@ function closeRow(key,label,hint){
     <input inputmode="numeric" data-k="${esc(key)}" class="${ov?"ov":""}" value="${f.v?Math.round(f.v).toLocaleString("ko-KR"):""}" placeholder="0" aria-label="${esc(label)} 금액">
     ${ov?`<button class="rst" data-reset="${esc(key)}" title="자동값으로 되돌리기" aria-label="${esc(label)} 자동값으로">↺</button>`:"<span></span>"}</div>`;
 }
+function partnerTotalRow(name){
+  const pl=monthPL(mKey(cCur.y,cCur.m),draft);
+  return `<div class="crow"><div class="cl"><b>${name} 총매출</b><span class="src default">계산값</span><small>${name} 개인매출 + 혜진 매출의 50%</small></div><output aria-label="${name} 총매출">${won(pl.partnerGross[name])}</output><span></span></div>`;
+}
 function renderClose(fromRoute){
   if(fromRoute&&!dirty)loadDraft();if(!draft)loadDraft();
   $("cLabel").textContent=`${cCur.y}.${pad(cCur.m)}`;
   const H=(id,t)=>{const el=$(id);el.innerHTML=`<h3>${t}</h3>`;return el;};
-  H("cgRev","매출").insertAdjacentHTML("beforeend",closeRow("rev_total","총 매출","핸드SOS 엑셀 합계")+cfg.designers.map(n=>closeRow("rev:"+n,`${n} 매출`)).join(""));
+  H("cgRev","매출").insertAdjacentHTML("beforeend",closeRow("rev_total","총 매출","핸드SOS 엑셀 합계")+closeRow("rev:건한","건한 개인매출")+closeRow("rev:근영","근영 개인매출")+closeRow("rev:혜진","혜진 매출")+partnerTotalRow("건한")+partnerTotalRow("근영"));
   H("cgFixed","고정비").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="fixed").map(c=>closeRow(c[0],c[1],c[0]==="vat"?"신고하는 달에만 입력":"")).join(""));
   H("cgCard","카드 대금").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="card").map(c=>closeRow(c[0],c[1],"Gmail 명세서 연결 전에는 직접 입력")).join(""));
   H("cgStaff","인건비 · 기타").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="staff").map(c=>closeRow(c[0],costLabel(c[0]))).join(""));
@@ -616,7 +619,7 @@ function renderClose(fromRoute){
 }
 function updateSum(){
   const mk=mKey(cCur.y,cCur.m),pl=monthPL(mk,draft);
-  $("sRev").textContent=won(pl.rev);$("sCost").textContent=won(pl.cost);$("sProfit").textContent=won(pl.profit);$("sProfit").className="v "+(pl.profit>=0?"profit-pos":"profit-neg");
+  $("sRev").textContent=won(pl.rev);$("sCost").textContent=won(pl.cost);$("sProfit").textContent=`건한 ${won(pl.partners.건한)} · 근영 ${won(pl.partners.근영)}`;$("sProfit").className="v "+(pl.partners.건한>=0&&pl.partners.근영>=0?"profit-pos":"profit-neg");
   const dsum=pl.designers.reduce((s,x)=>s+x[1],0);
   $("revWarn").innerHTML=dsum&&pl.rev&&Math.abs(dsum-pl.rev)>=1000?`<div class="warnline">디자이너 매출 합계(${won(dsum)})가 총 매출과 ${won(Math.abs(pl.rev-dsum))} 차이 납니다.</div>`:"";
   if(dirty)$("cStatus").textContent="저장하지 않은 변경 사항이 있습니다.";
@@ -671,7 +674,7 @@ function renderHome(){
   const d=new Date();$("homeDate").textContent=d.toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"long"});
   const nowK=mKey(d.getFullYear(),d.getMonth()+1);thisMonthData=allMonths[nowK]||{};const s=sums(thisMonthData.days),pl=monthPL(nowK);
   $("hSales").textContent=won(s.total);$("hSalesS").textContent=`결제액 기준 · ${s.count}건`;
-  $("hToday").textContent=won(pl.profit);$("hToday").className="t-v "+(pl.profit>=0?"profit-pos":"profit-neg");$("hTodayS").textContent=`매출 ${won(pl.rev)} − 비용 ${won(pl.cost)}`;
+  $("hToday").textContent=`건한 ${won(pl.partners.건한)}`;$("hToday").className="t-v "+(pl.partners.건한>=0?"profit-pos":"profit-neg");$("hTodayS").textContent=`근영 ${won(pl.partners.근영)}`;
   const pk=shift(d.getFullYear(),d.getMonth()+1,-1),pkey=mKey(pk.y,pk.m),pc=allClose[pkey];
   $("hClose").textContent=pc&&pc.closedAt?`${pk.m}월 정산 완료`:`${pk.m}월 정산 필요`;
   document.querySelectorAll('[data-b="close"]').forEach(b=>b.hidden=!!(pc&&pc.closedAt));
