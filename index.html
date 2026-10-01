@@ -468,7 +468,9 @@ function applyTheme(t){
   $("themeBtnTop").innerHTML=`<svg class="ico"><use href="#i-${dark?"sun":"moon"}"/></svg>`;
   $("themeBtnSide").innerHTML=`<svg class="ico"><use href="#i-${dark?"sun":"moon"}"/></svg>${dark?"라이트 모드":"다크 모드"}`;
   ls.set("theme",t);
-  if(typeof renderTrend==="function") renderTrend();
+  // 초기 실행 때는 정산 계산 상수가 아직 준비되기 전이다.
+  // 다음 실행 순서로 넘겨야 메뉴와 버튼 등록까지 중단되지 않는다.
+  if(typeof renderTrend==="function") setTimeout(renderTrend,0);
 }
 document.querySelectorAll("#themeSeg button").forEach(b=>b.onclick=()=>applyTheme(b.dataset.t));
 $("themeBtnTop").onclick=$("themeBtnSide").onclick=()=>applyTheme(isDark()?"light":"dark");
