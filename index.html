@@ -437,6 +437,25 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function safeUrl(u){try{const x=new URL(u);return /^https?:$/.test(x.protocol)?x.href:null;}catch{return null;}}
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3500);}
 const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+const SYNC_ENDPOINT="https://rho-eight-83.vercel.app/api/state";
+let syncKey=ls.get("nudif-sync-key")||"";
+
+function saveBrowser(){ls.set("nudif-dashboard-state",JSON.stringify({months:allMonths,close:allClose,cfg}));}
+async function saveCloud(){
+  if(!syncKey)return false;
+  const r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:{months:allMonths,close:allClose,cfg}})});
+  if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
+  return true;
+}
+async function loadCloud(){
+  if(!syncKey){syncKey=prompt("누디프 대시보드 관리 비밀번호를 입력하세요.")||"";if(syncKey)ls.set("nudif-sync-key",syncKey);}
+  if(!syncKey)return false;
+  const r=await fetch(SYNC_ENDPOINT,{headers:{"X-Dashboard-Key":syncKey}});
+  if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
+  const state=(await r.json()).state;
+  if(state){allMonths=state.months||{};allClose=state.close||allClose;cfg={...cfg,...(state.cfg||{})};}
+  return true;
+}
 
 let db=null,mcp=null,pollT=null;
 // 공개 페이지에서는 로그인 저장소를 쓸 수 없으므로, 확정한 2026년 8월 정산은 기본값으로 보관한다.
@@ -528,7 +547,7 @@ function renderSales(){$("mLabel").textContent=`${cur.y}.${pad(cur.m)}`;renderKp
 function subscribeMonth(){
   monthData=allMonths[mKey(cur.y,cur.m)]||{};const p=shift(cur.y,cur.m,-1);prevMonthData=allMonths[mKey(p.y,p.m)]||{};
   renderSales();renderPL();
-  $("dbStatus").textContent=!db?"로그인해야 매출을 볼 수 있습니다.":monthData.updatedAt?`마지막 반영 ${new Date(monthData.updatedAt).toLocaleString("ko-KR")}`:"이 달에는 아직 POS 매출이 없습니다. ‘매출 데이터 입력’에서 핸드SOS 엑셀을 올리세요.";
+  $("dbStatus").textContent=monthData.updatedAt?`마지막 반영 ${new Date(monthData.updatedAt).toLocaleString("ko-KR")}`:"이 달에는 아직 POS 매출이 없습니다. ‘매출 데이터 입력’에서 핸드SOS 엑셀을 올리세요.";
 }
 
 /* ---------- monthly close (P&L) ---------- */
@@ -647,13 +666,10 @@ $("cMemo").oninput=()=>{draft.memo=$("cMemo").value;dirty=true;};
 function moveClose(d){if(dirty&&!moveClose.ok){$("cStatus").textContent="저장하지 않은 변경 사항이 있습니다. 한 번 더 누르면 버리고 이동합니다.";moveClose.ok=true;return;}moveClose.ok=false;cCur=shift(cCur.y,cCur.m,d);loadDraft();renderClose();}
 $("cPrev").onclick=()=>moveClose(-1);$("cNext").onclick=()=>moveClose(1);
 $("cSave").onclick=async()=>{
-  if(!db){$("cStatus").textContent="로그인한 상태에서만 저장할 수 있습니다.";return;}
   const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;
-  try{const ref=db.doc("close/"+mk),snap=await ref.get(),prev=snap.exists?snap.data():{};
-    const pl=monthPL(mk,draft);
-    await ref.set({...prev,manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,closedAt:Date.now(),
-      summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}});
-    dirty=false;toast(`${cCur.m}월 정산을 저장했습니다`);
+  try{const pl=monthPL(mk,draft);
+    allClose[mk]={...(allClose[mk]||{}),manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,closedAt:Date.now(),summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}};
+    saveBrowser();const synced=await saveCloud();dirty=false;renderClose();renderPL();renderHome();toast(synced?`${cCur.m}월 정산을 동기화했습니다`:`${cCur.m}월 정산을 이 기기에 저장했습니다`);
   }catch(e){$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);}
   $("cSave").disabled=false;
 };
@@ -664,10 +680,9 @@ function renderDefs(){
   $("defForm").innerHTML=COSTS.filter(c=>c[3]).map(([k])=>`<label>${esc(costLabel(k))} (매달)<input inputmode="numeric" id="def_${k}" value="${cfg.defaults[k]?(+cfg.defaults[k]).toLocaleString("ko-KR"):""}" placeholder="0" style="text-align:right"></label>`).join("");
 }
 $("saveDefs").onclick=async()=>{
-  if(!db){$("defStatus").textContent="로그인한 상태에서만 저장할 수 있습니다.";return;}
   const defaults={};COSTS.filter(c=>c[3]).forEach(([k])=>{const v=$("def_"+k).value.replace(/[^\d]/g,"");if(v)defaults[k]=+v;});
   const designers=$("dsNames").value.split(/[,，]/).map(x=>x.trim()).filter(Boolean);
-  try{await db.doc("settings/close").set({designers:designers.length?designers:["건한","근영","혜진"],salaryLabel:$("salaryLabel").value.trim()||"월급",defaults});$("defStatus").textContent="저장했습니다. 매달 자동으로 채워집니다.";}
+  try{cfg={...cfg,designers:designers.length?designers:["건한","근영","혜진"],salaryLabel:$("salaryLabel").value.trim()||"월급",defaults};saveBrowser();await saveCloud();$("defStatus").textContent="저장했습니다. 매달 자동으로 채워집니다.";}
   catch(e){$("defStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);}
 };
 $("prevM").onclick=()=>{cur=shift(cur.y,cur.m,-1);monthData={};prevMonthData={};subscribeMonth();};
@@ -675,16 +690,17 @@ $("nextM").onclick=()=>{cur=shift(cur.y,cur.m,1);monthData={};prevMonthData={};s
 
 async function writeDays(byMonth,mode){
   for(const mk in byMonth){
-    const ref=db.doc("months/"+mk),snap=await ref.get();
-    const days=JSON.parse(JSON.stringify(snap.exists?(snap.data().days||{}):{}));
-    const people=mode==="replace"?{}:JSON.parse(JSON.stringify(snap.exists?(snap.data().people||{}):{}));
+    const prev=allMonths[mk]||{};
+    const days=JSON.parse(JSON.stringify(prev.days||{}));
+    const people=mode==="replace"?{}:JSON.parse(JSON.stringify(prev.people||{}));
     for(const dd in byMonth[mk]){const inc=byMonth[mk][dd];
       if(mode==="replace"||!days[dd])days[dd]={naver:{amt:0,n:0},walkin:{amt:0,n:0}};
       for(const ch of["naver","walkin"]){days[dd][ch]=days[dd][ch]||{amt:0,n:0};days[dd][ch].amt+=inc[ch]?.amt||0;days[dd][ch].n+=inc[ch]?.n||0;}
       if(inc.by){days[dd].by=days[dd].by||{};for(const n in inc.by)days[dd].by[n]=(days[dd].by[n]||0)+inc.by[n];}
       if(inc.people)for(const n in inc.people){const names=new Set(people[n]||[]);inc.people[n].forEach(name=>names.add(name));people[n]=[...names];}}
-    await ref.set({days,people,updatedAt:Date.now()});
+    allMonths[mk]={days,people,updatedAt:Date.now()};
   }
+  saveBrowser();await saveCloud();
 }
 
 /* ---------- home ---------- */
@@ -895,14 +911,13 @@ function renderSummary(){
   $("sumCard").hidden=false;stepOn(4);
 }
 $("doImport").onclick=async()=>{
-  if(!db){$("impStatus").textContent="로그인한 상태에서만 저장할 수 있습니다.";return;}
   const{out}=aggregate(),n=Object.values(out).reduce((s,m)=>s+Object.keys(m).length,0);
   if(!n){$("impStatus").textContent="반영할 데이터가 없습니다.";return;}
   $("doImport").disabled=true;$("impStatus").textContent="저장 중…";
   try{
     await writeDays(out,"replace");
     const h=headers(),cols={};roles.forEach((r,i)=>{if(r)cols[h[i]]=r;});
-    savedCfg={cols,ch:chMap,savedAt:Date.now()};await db.doc("settings/import").set(savedCfg);
+    savedCfg={cols,ch:chMap,savedAt:Date.now()};ls.set("nudif-import-config",JSON.stringify(savedCfg));
     $("impStatus").textContent=`${n}일치 매출을 반영했습니다. 열 지정도 저장했습니다.`;toast("핸드SOS 매출을 반영했습니다");
     const mks=Object.keys(out).sort(),last=mks[mks.length-1].split("-");cur={y:+last[0],m:+last[1]};subscribeMonth();
   }catch(err){$("impStatus").textContent="저장하지 못했습니다: "+(err.message||err.code);}
@@ -912,7 +927,7 @@ $("doImport").onclick=async()=>{
 /* manual */
 $("mDate").value=todayISO();
 $("impManual").addEventListener("submit",async e=>{
-  e.preventDefault();if(!db){$("manStatus").textContent="로그인한 상태에서만 저장할 수 있습니다.";return;}
+  e.preventDefault();
   const[Y,M,D]=$("mDate").value.split("-"),amt=+$("mAmt").value,n=+$("mN").value||1,ch=$("mCh").value;
   if(!amt){$("manStatus").textContent="금액을 입력하세요.";return;}
   try{await writeDays({[`${Y}-${M}`]:{[D]:{[ch]:{amt,n}}}},"add");$("mAmt").value="";$("manStatus").textContent=`${+M}/${+D} 결제액 ${won(amt)} 추가했습니다`;}
@@ -922,22 +937,10 @@ $("impManual").addEventListener("submit",async e=>{
 /* ---------- boot ---------- */
 renderDefs();route();renderSales();renderPL();renderRefs();
 (async()=>{
-  db=await claude.use("db");
-  if(!db){$("dbStatus").textContent="로그인해야 매출과 레퍼런스를 볼 수 있습니다.";$("syncStatus").textContent="로그인해야 레퍼런스를 볼 수 있습니다.";return;}
-  const rerender=()=>{subscribeMonth();renderHome();if(!$("cLabel").closest("[hidden]")&&!dirty){loadDraft();renderClose();}};
-  db.collection("months").onSnapshot(s=>{allMonths={};s.docs.forEach(d=>allMonths[d.id]=d.data());rerender();},e=>$("dbStatus").textContent="매출을 불러오지 못했습니다: "+(e.message||e.code));
-  db.collection("close").onSnapshot(s=>{allClose={};s.docs.forEach(d=>allClose[d.id]=d.data());rerender();});
-  db.doc("settings/close").onSnapshot(s=>{if(s.exists)cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{},...s.data(),designers:["건한","근영","혜진"]};renderDefs();rerender();});
-  db.doc("settings/import").onSnapshot(s=>{savedCfg=s.exists?s.data():null;});
-  let first=true;
-  db.collection("refs").orderBy("submittedAt","desc").limit(300).onSnapshot(s=>{
-    const before=new Set(refs.map(r=>r.id));refs=s.docs.map(d=>({...d.data(),id:d.id}));
-    const fresh=refs.filter(r=>!r.seen&&!before.has(r.id));if(!first&&fresh.length)toast(`새 레퍼런스: ${fresh[0].name||"고객"}`);
-    first=false;renderRefs();
-  },e=>$("syncStatus").textContent="레퍼런스를 불러오지 못했습니다: "+(e.message||e.code));
-  const perms=await claude.use("permissions"),st=perms?await perms.state("mcp"):"unavailable";
-  if(st==="granted")sync();
-  else{$("syncStatus").textContent="‘새로고침’을 누르면 고객이 올린 레퍼런스를 가져옵니다. 한 번 허용하면 열어 둔 동안 2분마다 자동 확인합니다.";$("jfState").textContent="아직 확인하지 않음";}
+  try{await loadCloud();}catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");}
+  savedCfg=JSON.parse(ls.get("nudif-import-config")||"null");
+  subscribeMonth();renderHome();renderDefs();if(!$("cLabel").closest("[hidden]")){loadDraft();renderClose();}
+  $("syncStatus").textContent="레퍼런스 동기화는 Jotform 연결 후 사용할 수 있습니다.";$("jfState").textContent="아직 확인하지 않음";
 })();
 </script>
 </body>
