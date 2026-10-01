@@ -440,7 +440,7 @@ const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v)
 let db=null,mcp=null,pollT=null;
 let cur=(()=>{const d=new Date();return {y:d.getFullYear(),m:d.getMonth()+1};})();
 let monthData={},prevMonthData={},thisMonthData={},refs=[];
-let allMonths={},allClose={},cfg={designers:["하늬","건한","혜진"],salaryLabel:"혜진 월급",defaults:{}};
+let allMonths={},allClose={},cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{}};
 
 /* ---------- theme ---------- */
 function isDark(){const r=document.documentElement;if(r.classList.contains("t-dark"))return true;if(r.classList.contains("t-light"))return false;const t=r.getAttribute("data-theme");return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;}
@@ -646,7 +646,7 @@ $("saveDefs").onclick=async()=>{
   if(!db){$("defStatus").textContent="로그인한 상태에서만 저장할 수 있습니다.";return;}
   const defaults={};COSTS.filter(c=>c[3]).forEach(([k])=>{const v=$("def_"+k).value.replace(/[^\d]/g,"");if(v)defaults[k]=+v;});
   const designers=$("dsNames").value.split(/[,，]/).map(x=>x.trim()).filter(Boolean);
-  try{await db.doc("settings/close").set({designers:designers.length?designers:["하늬","건한","혜진"],salaryLabel:$("salaryLabel").value.trim()||"월급",defaults});$("defStatus").textContent="저장했습니다. 매달 자동으로 채워집니다.";}
+  try{await db.doc("settings/close").set({designers:designers.length?designers:["건한","근영","혜진"],salaryLabel:$("salaryLabel").value.trim()||"월급",defaults});$("defStatus").textContent="저장했습니다. 매달 자동으로 채워집니다.";}
   catch(e){$("defStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);}
 };
 $("prevM").onclick=()=>{cur=shift(cur.y,cur.m,-1);monthData={};prevMonthData={};subscribeMonth();};
@@ -794,8 +794,11 @@ function readFile(f){
   if(typeof XLSX==="undefined"){toast("엑셀 읽기 도구를 불러오지 못했습니다. 새로고침 후 다시 시도하세요.");return;}
   const r=new FileReader();
   r.onload=()=>{try{
-    const wb=XLSX.read(new Uint8Array(r.result),{type:"array",cellDates:true});
-    sheetRows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:""}).filter(r=>r.some(c=>c!==""));
+    const bytes=new Uint8Array(r.result),head=new TextDecoder("latin1").decode(bytes.slice(0,512));
+    const wb=/<!doctype|<html|<table/i.test(head)?XLSX.read(new TextDecoder("euc-kr").decode(bytes),{type:"string",cellDates:true}):XLSX.read(bytes,{type:"array",cellDates:true});
+    const candidates=wb.SheetNames.map(name=>({name,rows:XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,raw:true,defval:""}).filter(row=>row.some(cell=>cell!==""))}));
+    const picked=candidates.filter(x=>x.rows.some(row=>row.some(cell=>/일자|날짜|date|일시/i.test(String(cell)))&&row.some(cell=>/결제액|금액|매출|합계|amount/i.test(String(cell))))).sort((a,b)=>b.rows.length-a.rows.length)[0]||candidates.sort((a,b)=>b.rows.length-a.rows.length)[0];
+    sheetRows=picked.rows;
     const width=Math.max(...sheetRows.slice(0,40).map(r=>r.length));
     sheetRows=sheetRows.map(r=>{const x=r.slice();while(x.length<width)x.push("");return x;});
     // header row: saved one if it matches, else first row in top 15 that looks like headers
@@ -803,7 +806,7 @@ function readFile(f){
     if(hdrIdx<0)hdrIdx=0;
     $("hdrRow").innerHTML=sheetRows.slice(0,15).map((r,i)=>`<option value="${i}" ${i===hdrIdx?"selected":""}>${i+1}행 · ${esc(r.filter(Boolean).slice(0,3).join(", ").slice(0,30))}</option>`).join("");
     autoRoles();
-    $("fileStatus").textContent=`${f.name} · ${sheetRows.length-hdrIdx-1}행`;
+    $("fileStatus").textContent=`${f.name} · ${sheetRows.length-hdrIdx-1}행 · 한글 매출 양식 인식됨`;
     $("mapCard").hidden=false;stepOn(2);renderMap();
   }catch(err){toast("파일을 읽지 못했습니다: "+err.message);}};
   r.readAsArrayBuffer(f);
@@ -903,7 +906,7 @@ renderDefs();route();renderSales();renderPL();renderRefs();
   const rerender=()=>{subscribeMonth();renderHome();if(!$("cLabel").closest("[hidden]")&&!dirty){loadDraft();renderClose();}};
   db.collection("months").onSnapshot(s=>{allMonths={};s.docs.forEach(d=>allMonths[d.id]=d.data());rerender();},e=>$("dbStatus").textContent="매출을 불러오지 못했습니다: "+(e.message||e.code));
   db.collection("close").onSnapshot(s=>{allClose={};s.docs.forEach(d=>allClose[d.id]=d.data());rerender();});
-  db.doc("settings/close").onSnapshot(s=>{if(s.exists)cfg={designers:["하늬","건한","혜진"],salaryLabel:"혜진 월급",defaults:{},...s.data(),designers:["하늬","건한","혜진"]};renderDefs();rerender();});
+  db.doc("settings/close").onSnapshot(s=>{if(s.exists)cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{},...s.data(),designers:["건한","근영","혜진"]};renderDefs();rerender();});
   db.doc("settings/import").onSnapshot(s=>{savedCfg=s.exists?s.data():null;});
   let first=true;
   db.collection("refs").orderBy("submittedAt","desc").limit(300).onSnapshot(s=>{
