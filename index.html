@@ -382,6 +382,10 @@ tr.dim td{opacity:.45}
       <label>조회 월<input id="iMonthPicker" type="month"></label>
       <label>거래처 검색<input id="iSearch" type="search" placeholder="상호명 또는 전화번호 검색"></label>
     </div>
+    <div class="card" id="iStatementCard">
+      <div class="card-h"><h2 id="iListTitle">거래명세서 내역</h2><span class="status" id="iListStatus"></span></div>
+      <div class="tablebox"><table id="iTable"></table></div>
+    </div>
     <div class="inv-controls" id="iDownloadPanel" hidden>
       <label>내려받을 월<input id="iDownloadMonth" type="month"></label>
       <button id="iDownload" type="button">업체정보 내려받기</button>
@@ -409,10 +413,6 @@ tr.dim td{opacity:.45}
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="primary" type="submit">재고에 추가</button><span class="status" id="iStatus">한 제품당 한 줄씩 입력하세요.</span></div>
       </form>
-    </div>
-    <div class="card">
-      <div class="card-h"><h2 id="iListTitle">거래명세서 내역</h2><span class="status" id="iListStatus"></span></div>
-      <div class="tablebox"><table id="iTable"></table></div>
     </div>
   </section>
 
@@ -608,13 +608,13 @@ function renderInventory(){
   const list=invFor();
   const rows=[...list].sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(a.vendor).localeCompare(String(b.vendor)));
   $("iListTitle").textContent=`거래명세서 내역 · ${invPeriodLabel()}`;
-  $("iTable").innerHTML=`<thead><tr><th>거래일</th><th>상호 · 전화번호</th><th>제품명</th><th class="r">수량</th><th class="r">금액</th><th></th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.vendor)}<br><span class="inv-phone">${esc(x.phone||"—")}</span></td><td>${esc(x.product)}</td><td class="r">${x.qtyCheck?"확인 필요":(+x.qty||0).toLocaleString("ko-KR")}</td><td class="r">${won(x.amount)}</td><td><button class="ghost" data-idel="${esc(x.id)}" aria-label="삭제">×</button></td></tr>`).join("")||`<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">등록된 거래명세서가 없습니다</td></tr>`}</tbody>`;
+  $("iTable").innerHTML=`<thead><tr><th>거래일</th><th>상호 · 전화번호</th><th>제품명</th><th class="r">수량</th><th class="r">금액</th><th></th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.vendor)}<br><span class="inv-phone">${esc(x.phone||"—")}</span></td><td>${esc(x.product)}</td><td class="r">${x.qtyCheck?"확인 필요":(+x.qty||0).toLocaleString("ko-KR")}</td><td class="r">${won(x.amount)}</td><td><button class="ghost" data-idel="${esc(x.id)}" aria-label="삭제">×</button></td></tr>`).join("")||`<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">${invPeriodLabel()}에 저장된 거래명세서가 없습니다. 사진을 추가하면 이곳에 표시됩니다.</td></tr>`}</tbody>`;
   $("iListStatus").textContent=`${invPeriodLabel()} · ${rows.length}개 품목`;
   document.querySelectorAll("[data-idel]").forEach(b=>b.onclick=()=>deleteInventory(b.dataset.idel));
 }
 async function persistInventory(message){saveBrowser();const synced=await saveCloud();renderInventory();toast(synced?`${message} · 모든 기기에 동기화했습니다`:`${message} · 이 기기에 저장했습니다`);}
 async function deleteInventory(id){if(!confirm("이 제품 내역을 삭제할까요?"))return;inventory=inventory.filter(x=>x.id!==id);try{await persistInventory("제품 내역을 삭제했습니다");}catch(e){toast("저장하지 못했습니다: "+(e.message||""));}}
-segs("invSeg",f=>{iMode=f;$("iLookup").hidden=f!=="lookup";$("iDownloadPanel").hidden=f!=="download";});
+segs("invSeg",f=>{iMode=f;$("iLookup").hidden=f!=="lookup";$("iStatementCard").hidden=f!=="lookup";$("iDownloadPanel").hidden=f!=="download";});
 $("iMonthPicker").onchange=e=>{const [y,m]=(e.target.value||"").split("-");if(y&&m){iCur={y:+y,m:+m};renderInventory();}};
 $("iSearch").oninput=e=>{iSearchTerm=e.target.value.trim();renderInventory();};
 $("iDownload").onclick=()=>{const month=$("iDownloadMonth").value||invMonthKey(),[y,m]=month.split("-").map(Number),rows=[["조회 월",`${y}년 ${m}월`],["거래처","전화번호"],...vendorDirectory.map(x=>[x.vendor,x.phone||""])];const csv="\uFEFF"+rows.map(r=>r.map(v=>`\"${String(v).replace(/\"/g,'\"\"')}\"`).join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=`누디프_거래처_${month}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
