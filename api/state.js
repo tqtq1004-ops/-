@@ -24,6 +24,7 @@ module.exports = async function handler(req, res) {
   if (req.headers["x-dashboard-key"] !== process.env.DASHBOARD_SYNC_KEY) {
     return res.status(401).json({ error: "관리 비밀번호가 맞지 않습니다." });
   }
+
   try {
     const col = await collection();
     if (req.method === "GET") {
