@@ -156,6 +156,16 @@ tr.dim td{opacity:.45}
 .bar .fill{height:100%;border-radius:999px;background:var(--accent)}
 .bar .amt{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .profit-pos{color:var(--naver)} .profit-neg{color:var(--alert)}
+/* inventory */
+.inv-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.inv-summary .kpi{box-shadow:none}
+.inv-controls{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.inv-controls label{display:flex;flex-direction:column;gap:6px;font-size:.8rem;color:var(--muted);min-width:170px}
+.inv-controls select{min-height:42px}
+.vendor-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.vendor-summary>div{border:1px solid var(--line);background:var(--surface2);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px}
+.vendor-summary b{font-size:1rem;font-variant-numeric:tabular-nums}
+.inv-phone{font-size:.78rem;color:var(--muted)}
 /* close form */
 .cgroup{display:flex;flex-direction:column}
 .cgroup h3{padding:4px 0 8px}
@@ -181,6 +191,9 @@ tr.dim td{opacity:.45}
 .sumbar .v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .warnline{font-size:.82rem;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:6px 10px}
 @media (max-width:760px){
+  .inv-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .inv-summary .kpi:last-child{grid-column:1/-1}
+  .inv-controls label{min-width:0;flex:1}
   .sumbar{bottom:calc(var(--tabbar) + 10px + env(safe-area-inset-bottom,0px));grid-template-columns:repeat(3,minmax(0,1fr));padding:10px 12px}
   .sumbar button{grid-column:1/-1}
   .xrow{grid-template-columns:minmax(0,1fr) 110px 40px}
@@ -242,6 +255,7 @@ tr.dim td{opacity:.45}
     <a href="#close" data-r="close"><svg class="ico"><use href="#i-pen"/></svg>월 정산 입력<span class="badge" data-b="close" hidden>!</span></a>
     <a href="#reservations" data-r="reservations"><svg class="ico"><use href="#i-cal"/></svg>예약 현황<span class="badge" data-b="resv" hidden></span></a>
     <a href="#refs" data-r="refs"><svg class="ico"><use href="#i-img"/></svg>고객 레퍼런스<span class="badge" data-b="refs" hidden></span></a>
+    <a href="#inventory" data-r="inventory"><svg class="ico"><use href="#i-up"/></svg>재고관리</a>
     <div class="navsec">데이터</div>
     <a href="#import" data-r="import"><svg class="ico"><use href="#i-up"/></svg>매출 데이터 입력</a>
     <a href="#settings" data-r="settings"><svg class="ico"><use href="#i-set"/></svg>설정</a>
@@ -348,6 +362,45 @@ tr.dim td{opacity:.45}
     <div class="card"><div class="list" id="refList"></div></div>
   </section>
 
+  <!-- INVENTORY -->
+  <section class="page" data-page="inventory" hidden>
+    <div class="page-h">
+      <div><h1>재고관리</h1><p>거래명세서 기준으로 거래처·제품·수량·매입 금액을 월별과 연간으로 확인합니다.</p></div>
+      <div class="monthnav"><button id="iPrev" aria-label="이전 달">‹</button><span class="m" id="iLabel">—</span><button id="iNext" aria-label="다음 달">›</button></div>
+    </div>
+    <div class="inv-controls">
+      <label>거래처<select id="iVendor"><option value="">전체 거래처</option></select></label>
+    </div>
+    <div class="inv-summary" style="margin-top:14px">
+      <div class="kpi"><span class="lbl" id="iMonthLabel">이번 달 매입액</span><span class="v" id="iMonthAmount">₩0</span><span class="s">선택한 거래처 기준</span></div>
+      <div class="kpi"><span class="lbl" id="iYearLabel">올해 누적 매입액</span><span class="v" id="iYearAmount">₩0</span><span class="s">선택한 거래처 기준</span></div>
+      <div class="kpi"><span class="lbl">이번 달 입고 수량</span><span class="v" id="iMonthQty">0개</span><span class="s">제품별 수량 합계</span></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>거래처별 이번 달 매입</h2><span class="lbl">상호별로 확인</span></div>
+      <div class="vendor-summary" id="iVendorSummary"></div>
+    </div>
+    <div class="grid2">
+      <form class="card" id="iForm">
+        <div class="card-h"><h2>거래명세서 추가</h2><span class="lbl">사진을 보고 항목별로 입력</span></div>
+        <div class="form">
+          <label>거래일<input type="date" id="iDate" required></label>
+          <label>상호명<input id="iVendorName" required placeholder="예: 모엘스코스메틱"></label>
+          <label>전화번호<input type="tel" id="iPhone" placeholder="010-0000-0000"></label>
+          <label>제품명<input id="iProduct" required placeholder="예: 블리치 파우더"></label>
+          <label>수량<input type="number" id="iQty" min="1" step="1" required inputmode="numeric" placeholder="1"></label>
+          <label>금액 (원)<input type="number" id="iAmount" min="0" step="100" required inputmode="numeric" placeholder="30000"></label>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="primary" type="submit">재고에 추가</button><span class="status" id="iStatus">한 제품당 한 줄씩 입력하세요.</span></div>
+      </form>
+      <div class="card"><div class="card-h"><h2>입고 제품 수량</h2><span class="lbl">선택한 달 · 거래처 기준</span></div><div class="bars" id="iProductSummary"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>거래명세서 내역</h2><span class="status" id="iListStatus"></span></div>
+      <div class="tablebox"><table id="iTable"></table></div>
+    </div>
+  </section>
+
   <!-- IMPORT -->
   <section class="page" data-page="import" hidden>
     <div class="page-h"><div><h1>매출 데이터 입력</h1><p>핸드SOS에서 받은 엑셀을 올리고, 각 열이 무엇인지 지정하세요.</p></div>
@@ -422,7 +475,7 @@ tr.dim td{opacity:.45}
   <a href="#home" data-r="home"><svg class="ico"><use href="#i-home"/></svg>홈</a>
   <a href="#sales" data-r="sales"><svg class="ico"><use href="#i-chart"/></svg>매출</a>
   <a href="#close" data-r="close"><svg class="ico"><use href="#i-pen"/></svg>정산</a>
-  <a href="#refs" data-r="refs"><svg class="ico"><use href="#i-img"/></svg>레퍼런스<span class="badge" data-b="refs" hidden></span></a>
+  <a href="#inventory" data-r="inventory"><svg class="ico"><use href="#i-up"/></svg>재고</a>
   <a href="#more" id="moreTab"><svg class="ico"><use href="#i-menu"/></svg>더보기<span class="badge" data-b="resv" hidden></span></a>
 </nav>
 <div class="toast" id="toast" hidden></div>
@@ -442,10 +495,10 @@ const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v)
 const SYNC_ENDPOINT="https://rho-eight-83.vercel.app/api/state";
 let syncKey=ls.get("nudif-sync-key")||"";
 
-function saveBrowser(){ls.set("nudif-dashboard-state",JSON.stringify({months:allMonths,close:allClose,cfg}));}
+function saveBrowser(){ls.set("nudif-dashboard-state",JSON.stringify({months:allMonths,close:allClose,cfg,inventory}));}
 async function saveCloud(){
   if(!syncKey)return false;
-  const r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:{months:allMonths,close:allClose,cfg}})});
+  const r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:{months:allMonths,close:allClose,cfg,inventory}})});
   if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
   return true;
 }
@@ -455,7 +508,7 @@ async function loadCloud(){
   const r=await fetch(SYNC_ENDPOINT,{headers:{"X-Dashboard-Key":syncKey}});
   if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
   const state=(await r.json()).state;
-  if(state){allMonths=state.months||{};allClose=state.close||allClose;cfg={...cfg,...(state.cfg||{}),defaults:{...cfg.defaults,...(state.cfg?.defaults||{})}};}
+  if(state){allMonths=state.months||{};allClose=state.close||allClose;inventory=state.inventory||inventory;cfg={...cfg,...(state.cfg||{}),defaults:{...cfg.defaults,...(state.cfg?.defaults||{})}};}
   return true;
 }
 
@@ -464,6 +517,18 @@ let db=null,mcp=null,pollT=null;
 // 이후 로그인 저장소가 연결되면 해당 데이터가 우선 적용된다.
 let cur={y:2026,m:8};
 let monthData={},prevMonthData={},thisMonthData={},refs=[];
+// 사진에서 정확히 읽힌 모엘스 거래명세서(2026-09-09)만 초기값으로 넣었다.
+// 나머지 사진은 제품명이 선명하지 않아 임의로 등록하지 않는다.
+let inventory=[
+  {id:"moels-20260909-1",date:"2026-09-09",vendor:"모엘스코스메틱 (MOELS)",phone:"010-8953-6100",product:"오로라 CC 블리치 파우더 4X",qty:2,amount:30000},
+  {id:"moels-20260909-2",date:"2026-09-09",vendor:"모엘스코스메틱 (MOELS)",phone:"010-8953-6100",product:"사사키 GREEN (산화제별도)",qty:1,amount:5500},
+  {id:"moels-20260909-3",date:"2026-09-09",vendor:"모엘스코스메틱 (MOELS)",phone:"010-8953-6100",product:"마지콜2.10",qty:5,amount:39000},
+  {id:"moels-20260909-4",date:"2026-09-09",vendor:"모엘스코스메틱 (MOELS)",phone:"010-8953-6100",product:"헤리티지 1.0",qty:1,amount:4000},
+  {id:"moels-20260909-5",date:"2026-09-09",vendor:"모엘스코스메틱 (MOELS)",phone:"010-8953-6100",product:"헤리티지 산화제 3%",qty:1,amount:4500},
+  {id:"moels-20260909-6",date:"2026-09-09",vendor:"모엘스코스메틱 (MOELS)",phone:"010-8953-6100",product:"헤리티지 산화제 6%",qty:1,amount:4500},
+  {id:"moels-20260909-7",date:"2026-09-09",vendor:"모엘스코스메틱 (MOELS)",phone:"010-8953-6100",product:"비닐캡",qty:10,amount:0},
+  {id:"moels-20260909-8",date:"2026-09-09",vendor:"모엘스코스메틱 (MOELS)",phone:"010-8953-6100",product:"스폰지 (털이개)",qty:10,amount:0}
+];
 let allMonths={},allClose={
   "2026-08":{
     manual:{
@@ -498,12 +563,13 @@ $("themeBtnTop").onclick=$("themeBtnSide").onclick=()=>applyTheme(isDark()?"ligh
 applyTheme(ls.get("theme")||"system");
 
 /* ---------- routing ---------- */
-const TITLES={home:"홈",sales:"매출·손익",close:"월 정산 입력",reservations:"예약 현황",refs:"고객 레퍼런스",import:"매출 데이터 입력",settings:"설정"};
+const TITLES={home:"홈",sales:"매출·손익",close:"월 정산 입력",reservations:"예약 현황",refs:"고객 레퍼런스",inventory:"재고관리",import:"매출 데이터 입력",settings:"설정"};
 function route(){
   let r=(location.hash||"#home").slice(1);
   if(r==="more"){document.body.classList.add("drawer");history.replaceState(null,"",route.last?"#"+route.last:"#home");return;}
   if(!TITLES[r]) r="home"; route.last=r;
   if(r==="close") renderClose(true);
+  if(r==="inventory") renderInventory();
   document.querySelectorAll("[data-page]").forEach(p=>p.hidden=p.dataset.page!==r);
   document.querySelectorAll("[data-r]").forEach(a=>{if(a.dataset.r===r)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
   $("topTitle").textContent=TITLES[r]; document.body.classList.remove("drawer"); window.scrollTo(0,0);
@@ -513,6 +579,38 @@ $("menuBtn").onclick=()=>document.body.classList.add("drawer");
 $("scrim").onclick=()=>document.body.classList.remove("drawer");
 $("bellTop").onclick=()=>{location.hash="refs";};
 function segs(id,cb){const el=$(id);el.querySelectorAll("button").forEach(b=>b.onclick=()=>{el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.f);});}
+
+/* ---------- inventory ---------- */
+let iCur={y:2026,m:9},iVendorFilter="";
+const invMonthKey=()=>mKey(iCur.y,iCur.m);
+const invFor=(monthOnly=false)=>inventory.filter(x=>(!monthOnly||String(x.date).startsWith(invMonthKey()))&&(!iVendorFilter||x.vendor===iVendorFilter));
+function renderInventory(){
+  $("iLabel").textContent=`${iCur.y}.${pad(iCur.m)}`;
+  $("iMonthLabel").textContent=`${iCur.m}월 매입액`;
+  $("iYearLabel").textContent=`${iCur.y}년 누적 매입액`;
+  const vendors=[...new Set(inventory.map(x=>x.vendor).filter(Boolean))].sort();
+  $("iVendor").innerHTML=`<option value="">전체 거래처</option>`+vendors.map(v=>`<option value="${esc(v)}" ${v===iVendorFilter?"selected":""}>${esc(v)}</option>`).join("");
+  const list=invFor(true),yearList=inventory.filter(x=>String(x.date).startsWith(`${iCur.y}-`) && (!iVendorFilter||x.vendor===iVendorFilter));
+  const sum=a=>a.reduce((s,x)=>s+(+x.amount||0),0),qty=a=>a.reduce((s,x)=>s+(+x.qty||0),0);
+  $("iMonthAmount").textContent=won(sum(list));$("iYearAmount").textContent=won(sum(yearList));$("iMonthQty").textContent=`${qty(list).toLocaleString("ko-KR")}개`;
+  const byVendor={};inventory.filter(x=>String(x.date).startsWith(invMonthKey())).forEach(x=>{const k=x.vendor||"미지정";byVendor[k]=byVendor[k]||{amount:0,qty:0,phone:x.phone||""};byVendor[k].amount+=+x.amount||0;byVendor[k].qty+=+x.qty||0;});
+  const vendorRows=Object.entries(byVendor).sort((a,b)=>b[1].amount-a[1].amount);
+  $("iVendorSummary").innerHTML=vendorRows.length?vendorRows.map(([v,x])=>`<div><b>${esc(v)}</b><span class="inv-phone">${esc(x.phone||"전화번호 미입력")}</span><span>${won(x.amount)} · ${x.qty.toLocaleString("ko-KR")}개</span></div>`).join(""):`<div class="empty">${iCur.m}월에 등록된 거래명세서가 없습니다</div>`;
+  const byProduct={};list.forEach(x=>{const k=x.product||"제품명 미입력";byProduct[k]=(byProduct[k]||0)+(+x.qty||0);});
+  const products=Object.entries(byProduct).sort((a,b)=>b[1]-a[1]);
+  $("iProductSummary").innerHTML=products.length?barList(products,qty(list),"var(--accent)"):`<div class="empty">선택한 조건에 입고 제품이 없습니다</div>`;
+  const rows=[...list].sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(a.vendor).localeCompare(String(b.vendor)));
+  $("iTable").innerHTML=`<thead><tr><th>거래일</th><th>상호 · 전화번호</th><th>제품명</th><th class="r">수량</th><th class="r">금액</th><th></th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.vendor)}<br><span class="inv-phone">${esc(x.phone||"—")}</span></td><td>${esc(x.product)}</td><td class="r">${(+x.qty||0).toLocaleString("ko-KR")}</td><td class="r">${won(x.amount)}</td><td><button class="ghost" data-idel="${esc(x.id)}" aria-label="삭제">×</button></td></tr>`).join("")||`<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">등록된 거래명세서가 없습니다</td></tr>`}</tbody>`;
+  $("iListStatus").textContent=`${rows.length}개 품목 · 매입액 ${won(sum(list))}`;
+  document.querySelectorAll("[data-idel]").forEach(b=>b.onclick=()=>deleteInventory(b.dataset.idel));
+}
+async function persistInventory(message){saveBrowser();const synced=await saveCloud();renderInventory();toast(synced?`${message} · 모든 기기에 동기화했습니다`:`${message} · 이 기기에 저장했습니다`);}
+async function deleteInventory(id){if(!confirm("이 제품 내역을 삭제할까요?"))return;inventory=inventory.filter(x=>x.id!==id);try{await persistInventory("제품 내역을 삭제했습니다");}catch(e){toast("저장하지 못했습니다: "+(e.message||""));}}
+$("iVendor").onchange=e=>{iVendorFilter=e.target.value;renderInventory();};
+$("iPrev").onclick=()=>{iCur=shift(iCur.y,iCur.m,-1);renderInventory();};
+$("iNext").onclick=()=>{iCur=shift(iCur.y,iCur.m,1);renderInventory();};
+$("iDate").value=todayISO();
+$("iForm").addEventListener("submit",async e=>{e.preventDefault();const date=$("iDate").value,vendor=$("iVendorName").value.trim(),phone=$("iPhone").value.trim(),product=$("iProduct").value.trim(),qty=+$("iQty").value,amount=+$("iAmount").value;if(!date||!vendor||!product||!qty){$("iStatus").textContent="거래일·상호명·제품명·수량을 입력하세요.";return;}const rec={id:`inv-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,date,vendor,phone,product,qty,amount};inventory.push(rec);iCur={y:+date.slice(0,4),m:+date.slice(5,7)};iVendorFilter="";try{await persistInventory("제품을 재고에 추가했습니다");$("iProduct").value="";$("iQty").value="";$("iAmount").value="";$("iStatus").textContent="추가 완료";}catch(err){inventory=inventory.filter(x=>x.id!==rec.id);$("iStatus").textContent="저장하지 못했습니다: "+(err.message||"");}});
 
 /* ---------- sales ---------- */
 function sums(days){let nv=0,wk=0,nn=0,wn=0,open=0;for(const k in(days||{})){const d=days[k],a=d.naver?.amt||0,b=d.walkin?.amt||0;nv+=a;wk+=b;nn+=d.naver?.n||0;wn+=d.walkin?.n||0;if(a+b>0)open++;}return {nv,wk,nn,wn,open,total:nv+wk,count:nn+wn};}
@@ -942,11 +1040,11 @@ $("impManual").addEventListener("submit",async e=>{
 });
 
 /* ---------- boot ---------- */
-renderDefs();route();renderSales();renderPL();renderRefs();
+renderDefs();route();renderSales();renderPL();renderRefs();renderInventory();
 (async()=>{
   try{await loadCloud();}catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");}
   savedCfg=JSON.parse(ls.get("nudif-import-config")||"null");
-  subscribeMonth();renderHome();renderDefs();if(!$("cLabel").closest("[hidden]")){loadDraft();renderClose();}
+  subscribeMonth();renderHome();renderDefs();renderInventory();if(!$("cLabel").closest("[hidden]")){loadDraft();renderClose();}
   $("syncStatus").textContent="레퍼런스 동기화는 Jotform 연결 후 사용할 수 있습니다.";$("jfState").textContent="아직 확인하지 않음";
 })();
 </script>
