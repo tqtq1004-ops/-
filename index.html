@@ -77,6 +77,7 @@ h3{font-size:.95rem;font-weight:600}
 .card-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.kpis.single{grid-template-columns:minmax(0,1fr)}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0;box-shadow:var(--shadow)}
 .kpi .v{font-size:1.4rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .kpi .s{font-size:.8rem;color:var(--muted)}
@@ -277,11 +278,8 @@ tr.dim td{opacity:.45}
       <div><h1>매출 대시보드</h1><p>핸드SOS 매출의 결제액을 기준으로 봅니다.</p></div>
       <div class="monthnav"><button id="prevM" aria-label="이전 달">‹</button><span class="m" id="mLabel">—</span><button id="nextM" aria-label="다음 달">›</button></div>
     </div>
-    <div class="kpis">
+    <div class="kpis single">
       <div class="kpi"><span class="lbl">총 매출</span><span class="v" id="kTotal">₩0</span><span class="s" id="kTotalS">—</span></div>
-      <div class="kpi"><span class="lbl">거래 건수</span><span class="v" id="kNaver">0건</span><span class="s" id="kNaverS">결제 내역 기준</span></div>
-      <div class="kpi"><span class="lbl">영업일</span><span class="v" id="kWalk">0일</span><span class="s" id="kWalkS">매출 발생일 기준</span></div>
-      <div class="kpi"><span class="lbl">객단가</span><span class="v" id="kAvg">₩0</span><span class="s" id="kAvgS">영업일 0일</span></div>
     </div>
     <div class="kpis">
       <div class="kpi"><span class="lbl">총 공동비용</span><span class="v" id="pCost">₩0</span><span class="s" id="pCostS">—</span></div>
@@ -453,7 +451,7 @@ async function loadCloud(){
   const r=await fetch(SYNC_ENDPOINT,{headers:{"X-Dashboard-Key":syncKey}});
   if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
   const state=(await r.json()).state;
-  if(state){allMonths=state.months||{};allClose=state.close||allClose;cfg={...cfg,...(state.cfg||{})};}
+  if(state){allMonths=state.months||{};allClose=state.close||allClose;cfg={...cfg,...(state.cfg||{}),defaults:{...cfg.defaults,...(state.cfg?.defaults||{})}};}
   return true;
 }
 
@@ -476,7 +474,7 @@ let allMonths={},allClose={
     memo:"",
     closedAt:Date.UTC(2026,7,31,12)
   }
-},cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{}};
+},cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000}};
 
 /* ---------- theme ---------- */
 function isDark(){const r=document.documentElement;if(r.classList.contains("t-dark"))return true;if(r.classList.contains("t-light"))return false;const t=r.getAttribute("data-theme");return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;}
@@ -515,12 +513,11 @@ function segs(id,cb){const el=$(id);el.querySelectorAll("button").forEach(b=>b.o
 /* ---------- sales ---------- */
 function sums(days){let nv=0,wk=0,nn=0,wn=0,open=0;for(const k in(days||{})){const d=days[k],a=d.naver?.amt||0,b=d.walkin?.amt||0;nv+=a;wk+=b;nn+=d.naver?.n||0;wn+=d.walkin?.n||0;if(a+b>0)open++;}return {nv,wk,nn,wn,open,total:nv+wk,count:nn+wn};}
 function renderKpis(){
-  const s=sums(monthData.days),p=sums(prevMonthData.days);
-  $("kTotal").textContent=won(s.total);
-  if(p.total>0){const pct=(s.total-p.total)/p.total*100;$("kTotalS").innerHTML=`전월 대비 <span class="${pct>=0?"up":"down"}">${pct>=0?"▲":"▼"} ${Math.abs(pct).toFixed(1)}%</span>`;}else $("kTotalS").textContent="전월 데이터 없음";
-  $("kNaver").textContent=`${s.count}건`;$("kNaverS").textContent="결제 내역 기준";
-  $("kWalk").textContent=`${s.open}일`;$("kWalkS").textContent="매출 발생일 기준";
-  $("kAvg").textContent=won(s.count?s.total/s.count:0);$("kAvgS").textContent=`영업일 ${s.open}일 · 총 ${s.count}건`;
+  const mk=mKey(cur.y,cur.m),s=sums(monthData.days),p=sums(prevMonthData.days);
+  const total=fieldVal(mk,"rev_total").v||s.total;
+  const prev=fieldVal(mKey(shift(cur.y,cur.m,-1).y,shift(cur.y,cur.m,-1).m),"rev_total").v||p.total;
+  $("kTotal").textContent=won(total);
+  if(prev>0){const pct=(total-prev)/prev*100;$("kTotalS").innerHTML=`전월 대비 <span class="${pct>=0?"up":"down"}">${pct>=0?"▲":"▼"} ${Math.abs(pct).toFixed(1)}%</span>`;}else $("kTotalS").textContent="결제액 기준";
 }
 function niceStep(max){const raw=max/4,p=Math.pow(10,Math.floor(Math.log10(raw))),n=raw/p;return(n<=1?1:n<=2?2:n<=5?5:10)*p;}
 function renderChart(){
@@ -551,7 +548,7 @@ function subscribeMonth(){
 }
 
 /* ---------- monthly close (P&L) ---------- */
-const COSTS=[["rent","월세","fixed",1],["mgmt","관리비","fixed",1],["parking","주차비","fixed",1],["taxacct","세무비","fixed",1],["loan","대출상환","fixed",1],["vat","부가세","fixed",0],
+const COSTS=[["rent","월세","fixed",1],["mgmt","관리비","fixed",1],["parking","주차비","fixed",1],["taxacct","세무비","fixed",1],["loan","대출상환","fixed",1],["vat","부가세","fixed",1],
   ["card_samsung","삼성카드","card",0],["card_woori","우리카드","card",0],["card_hana","하나카드","card",0],["salary","월급","staff",1],["common","기타 공동비용","staff",0]];
 const costLabel=k=>k==="salary"?(cfg.salaryLabel||"월급"):(COSTS.find(c=>c[0]===k)||[])[1];
 function posDesigner(mk,name){let t=0;const d=allMonths[mk]?.days||{};for(const k in d){const by=d[k].by||{};for(const n in by)if(n.includes(name))t+=by[n];}return t;}
@@ -584,9 +581,9 @@ function renderPL(){
   const mk=mKey(cur.y,cur.m),pl=monthPL(mk),c=allClose[mk];
   $("pCost").textContent=won(pl.cost);$("pCostS").textContent=`${pl.items.filter(x=>x[1]).length}개 항목`;
   $("pProfit").textContent=won(pl.partners.건한);$("pProfit").className="v "+(pl.partners.건한>=0?"profit-pos":"profit-neg");
-  $("pProfitS").textContent=`총매출 ${won(pl.partnerGross.건한)} − 비용 1/2`;
+  $("pProfitS").textContent=`총매출 ${won(pl.partnerGross.건한)} − 공동비용 ${won(pl.cost/2)}`;
   $("pMargin").textContent=won(pl.partners.근영);$("pMargin").className="v "+(pl.partners.근영>=0?"profit-pos":"profit-neg");
-  $("pMarginS").textContent=`총매출 ${won(pl.partnerGross.근영)} − 비용 1/2`;
+  $("pMarginS").textContent=`총매출 ${won(pl.partnerGross.근영)} − 공동비용 ${won(pl.cost/2)}`;
   $("pState").innerHTML=c&&c.closedAt?`<span class="pill">정산 완료</span>`:`<span class="pill warn">정산 전</span>`;
   const ds=pl.designers.filter(x=>x[1]),dsum=ds.reduce((s,x)=>s+x[1],0);
   $("dsBars").innerHTML=ds.length?barList(ds.sort((a,b)=>b[1]-a[1]),dsum,"var(--accent)"):`<div class="empty">핸드SOS 엑셀에서 ‘담당 디자이너’ 열을 지정하거나 월 정산에서 직접 입력하세요</div>`;
@@ -627,9 +624,10 @@ function loadDraft(){const c=allClose[mKey(cCur.y,cCur.m)]||{};draft={manual:{..
 function closeRow(key,label,hint){
   const mk=mKey(cCur.y,cCur.m),f=fieldVal(mk,key,draft),ov=f.src==="manual";
   const autoF=fieldVal(mk,key,{manual:{}});
+  const fixed=["rent","mgmt","parking","taxacct","loan","vat"].includes(key);
   return `<div class="crow"><div class="cl"><b>${esc(label)}</b><span class="src ${f.src}">${SRC[f.src]}</span>${ov&&autoF.v?`<small>자동값 ${won(autoF.v)}</small>`:hint?`<small>${esc(hint)}</small>`:""}</div>
-    <input inputmode="numeric" data-k="${esc(key)}" class="${ov?"ov":""}" value="${f.v?Math.round(f.v).toLocaleString("ko-KR"):""}" placeholder="0" aria-label="${esc(label)} 금액">
-    ${ov?`<button class="rst" data-reset="${esc(key)}" title="자동값으로 되돌리기" aria-label="${esc(label)} 자동값으로">↺</button>`:"<span></span>"}</div>`;
+    <input inputmode="numeric" data-k="${esc(key)}" class="${ov?"ov":""}" value="${f.v?Math.round(f.v).toLocaleString("ko-KR"):""}" placeholder="0" aria-label="${esc(label)} 금액" ${fixed?"readonly":""}>
+    ${fixed?`<button class="rst" data-edit="${esc(key)}" aria-label="${esc(label)} 수정">수정</button>`:ov?`<button class="rst" data-reset="${esc(key)}" title="자동값으로 되돌리기" aria-label="${esc(label)} 자동값으로">↺</button>`:"<span></span>"}</div>`;
 }
 function partnerTotalRow(name){
   const pl=monthPL(mKey(cCur.y,cCur.m),draft);
@@ -640,7 +638,7 @@ function renderClose(fromRoute){
   $("cLabel").textContent=`${cCur.y}.${pad(cCur.m)}`;
   const H=(id,t)=>{const el=$(id);el.innerHTML=`<h3>${t}</h3>`;return el;};
   H("cgRev","매출").insertAdjacentHTML("beforeend",closeRow("rev_total","총 매출","핸드SOS 엑셀 합계")+closeRow("rev:건한","건한 개인매출")+closeRow("rev:근영","근영 개인매출")+closeRow("rev:혜진","혜진 매출")+partnerTotalRow("건한")+partnerTotalRow("근영"));
-  H("cgFixed","고정비").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="fixed").map(c=>closeRow(c[0],c[1],c[0]==="vat"?"신고하는 달에만 입력":"")).join(""));
+  H("cgFixed","고정비").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="fixed").map(c=>closeRow(c[0],c[1],"매달 고정 · 수정 가능")).join(""));
   H("cgCard","카드 대금").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="card").map(c=>closeRow(c[0],c[1],"Gmail 명세서 연결 전에는 직접 입력")).join(""));
   H("cgStaff","인건비 · 기타").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="staff").map(c=>closeRow(c[0],costLabel(c[0]))).join(""));
   $("extras").innerHTML=draft.extras.length?draft.extras.map((x,i)=>`<div class="xrow"><input data-x="${i}" data-f="label" value="${esc(x.label||"")}" placeholder="항목 (예: 염색약)" aria-label="추가 비용 항목"><input data-x="${i}" data-f="amount" inputmode="numeric" value="${x.amount?(+x.amount).toLocaleString("ko-KR"):""}" placeholder="금액" style="text-align:right" aria-label="추가 비용 금액"><input class="xr" data-x="${i}" data-f="reason" value="${esc(x.reason||"")}" placeholder="사유" aria-label="추가 비용 사유"><button class="rst" data-xdel="${i}" aria-label="삭제">✕</button></div>`).join(""):`<div class="muted" style="font-size:.86rem;padding:4px 0 8px">이번 달 추가 비용이 있으면 ‘+ 비용 추가’로 항목·금액·사유를 남기세요.</div>`;
@@ -648,6 +646,7 @@ function renderClose(fromRoute){
   document.querySelectorAll("#cgRev input,#cgFixed input,#cgCard input,#cgStaff input").forEach(inp=>{
     inp.oninput=()=>{const raw=inp.value.replace(/[^\d]/g,"");draft.manual[inp.dataset.k]=raw===""?0:+raw;inp.classList.add("ov");dirty=true;updateSum();};});
   document.querySelectorAll("[data-reset]").forEach(b=>b.onclick=()=>{delete draft.manual[b.dataset.reset];dirty=true;renderClose();});
+  document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const inp=b.parentElement.querySelector("input");inp.readOnly=false;inp.focus();b.textContent="수정 중";});
   document.querySelectorAll("[data-x]").forEach(inp=>inp.oninput=()=>{const x=draft.extras[+inp.dataset.x];x[inp.dataset.f]=inp.dataset.f==="amount"?+(inp.value.replace(/[^\d]/g,""))||0:inp.value;dirty=true;updateSum();});
   document.querySelectorAll("[data-xdel]").forEach(b=>b.onclick=()=>{draft.extras.splice(+b.dataset.xdel,1);dirty=true;renderClose();});
   const c=allClose[mKey(cCur.y,cCur.m)];
