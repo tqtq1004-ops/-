@@ -163,6 +163,8 @@ tr.dim td{opacity:.45}
 .inv-controls label{display:flex;flex-direction:column;gap:6px;font-size:.8rem;color:var(--muted);min-width:170px}
 .inv-controls select{min-height:42px}
 .inv-controls .compact{min-width:106px;flex:0 1 130px}
+.range-buttons{display:flex;gap:7px;flex-wrap:wrap;align-items:end}
+.range-buttons button{padding:8px 11px;min-height:38px;font-size:.84rem}
 .vendor-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .vendor-summary>div{border:1px solid var(--line);background:var(--surface2);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:4px}
 .vendor-summary b{font-size:1rem;font-variant-numeric:tabular-nums}
@@ -375,20 +377,26 @@ tr.dim td{opacity:.45}
   <!-- INVENTORY -->
   <section class="page" data-page="inventory" hidden>
     <div class="page-h">
-      <div><h1>재고관리</h1><p>월 달력으로 거래명세서를 조회하고, 거래처 정보를 관리합니다.</p></div>
+      <div><h1>재고관리</h1><p>기간과 거래처·제품 조건으로 거래명세서를 검색합니다.</p></div>
     </div>
-    <div class="segs" id="invSeg" style="align-self:flex-start"><button data-f="lookup" aria-pressed="true">조회</button><button data-f="download" aria-pressed="false">내려받기</button></div>
-    <div class="inv-controls" id="iLookup">
-      <label>조회 월<input id="iMonthPicker" type="month"></label>
-      <label>거래처 검색<input id="iSearch" type="search" placeholder="상호명 또는 전화번호 검색"></label>
+    <div class="card">
+      <div class="card-h"><h2>검색 조건</h2><span class="lbl">기간 · 거래처 · 제품</span></div>
+      <div class="inv-controls">
+        <label>시작일<input id="iStart" type="date"></label>
+        <label>종료일<input id="iEnd" type="date"></label>
+        <div class="range-buttons" aria-label="빠른 기간 선택">
+          <button type="button" data-irange="today">당일</button><button type="button" data-irange="month">당월</button><button type="button" data-irange="prevMonth">전월</button><button type="button" data-irange="yesterday">어제</button><button type="button" data-irange="week">1주일</button><button type="button" data-irange="oneMonth">1개월</button><button type="button" data-irange="threeMonths">3개월</button><button type="button" data-irange="firstHalf">상반기</button><button type="button" data-irange="secondHalf">하반기</button><button type="button" data-irange="year">올해</button>
+        </div>
+      </div>
+      <div class="inv-controls" style="margin-top:10px">
+        <label>거래처<select id="iVendorSelect"><option value="">거래처 전체</option></select></label>
+        <label>제품<select id="iProductSelect"><option value="">제품 전체</option></select></label>
+        <div class="range-buttons"><button class="primary" id="iSearchBtn" type="button">검색</button><button id="iReset" type="button">원래대로</button><button id="iDownload" type="button">엑셀 내려받기</button></div>
+      </div>
     </div>
     <div class="card" id="iStatementCard">
       <div class="card-h"><h2 id="iListTitle">거래명세서 내역</h2><span class="status" id="iListStatus"></span></div>
       <div class="tablebox"><table id="iTable"></table></div>
-    </div>
-    <div class="inv-controls" id="iDownloadPanel" hidden>
-      <label>내려받을 월<input id="iDownloadMonth" type="month"></label>
-      <button id="iDownload" type="button">업체정보 내려받기</button>
     </div>
     <div class="card">
       <div class="card-h"><h2>등록 거래처</h2><span class="lbl">상호명 · 전화번호</span></div>
@@ -593,17 +601,21 @@ $("bellTop").onclick=()=>{location.hash="refs";};
 function segs(id,cb){const el=$(id);el.querySelectorAll("button").forEach(b=>b.onclick=()=>{el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.f);});}
 
 /* ---------- inventory ---------- */
-let iCur={y:2026,m:9},iSearchTerm="",iMode="lookup";
-const invMonthKey=()=>mKey(iCur.y,iCur.m);
+const invIso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const invMonthRange=(y,m)=>({start:invIso(new Date(y,m,1)),end:invIso(new Date(y,m+1,0))});
+let iRange=invMonthRange(2026,8),iVendorFilter="",iProductFilter="";
 function normalizeInventory(){inventory.forEach(x=>{if(x.vendor==="주식회사 스타헬스코스메틱")x.vendor="무백";});}
-function invFor(){return inventory.filter(x=>{const text=`${x.vendor||""} ${x.phone||""}`.toLowerCase();return String(x.date).startsWith(invMonthKey())&&(!iSearchTerm||text.includes(iSearchTerm.toLowerCase()));});}
-function invPeriodLabel(){return `${iCur.y}년 ${iCur.m}월`;}
+function invFor(){return inventory.filter(x=>{const date=String(x.date||"");return(!iRange.start||date>=iRange.start)&&(!iRange.end||date<=iRange.end)&&(!iVendorFilter||x.vendor===iVendorFilter)&&(!iProductFilter||x.product===iProductFilter);});}
+function invPeriodLabel(){return iRange.start===iRange.end?iRange.start:`${iRange.start} ~ ${iRange.end}`;}
+function setInventoryRange(kind){const now=new Date(),set=(start,end)=>iRange={start:invIso(start),end:invIso(end)},y=now.getFullYear(),m=now.getMonth();switch(kind){case"today":set(now,now);break;case"yesterday":{const d=new Date(y,m,now.getDate()-1);set(d,d);break;}case"week":set(new Date(y,m,now.getDate()-6),now);break;case"oneMonth":set(new Date(y,m-1,now.getDate()),now);break;case"threeMonths":set(new Date(y,m-3,now.getDate()),now);break;case"prevMonth":set(new Date(y,m-1,1),new Date(y,m,0));break;case"firstHalf":set(new Date(y,0,1),new Date(y,6,0));break;case"secondHalf":set(new Date(y,6,1),new Date(y,11,31));break;case"year":set(new Date(y,0,1),new Date(y,11,31));break;default:set(new Date(y,m,1),new Date(y,m+1,0));}}
 function renderInventory(){
   normalizeInventory();
-  $("iMonthPicker").value=invMonthKey();
-  if(!$("iDownloadMonth").value)$("iDownloadMonth").value=invMonthKey();
+  $("iStart").value=iRange.start;$("iEnd").value=iRange.end;
   const vendorInfo=new Map(vendorDirectory.map(x=>[x.vendor,x]));inventory.forEach(x=>{if(x.vendor)vendorInfo.set(x.vendor,{vendor:x.vendor,phone:x.phone||vendorInfo.get(x.vendor)?.phone||""});});
-  const vendors=[...vendorInfo.values()].filter(x=>!iSearchTerm||`${x.vendor} ${x.phone||""}`.toLowerCase().includes(iSearchTerm.toLowerCase())).sort((a,b)=>a.vendor.localeCompare(b.vendor,"ko"));
+  const vendors=[...vendorInfo.values()].sort((a,b)=>a.vendor.localeCompare(b.vendor,"ko"));
+  $("iVendorSelect").innerHTML=`<option value="">거래처 전체</option>${vendors.map(x=>`<option value="${esc(x.vendor)}"${x.vendor===iVendorFilter?" selected":""}>${esc(x.vendor)}</option>`).join("")}`;
+  const products=[...new Set(inventory.map(x=>x.product).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ko"));
+  $("iProductSelect").innerHTML=`<option value="">제품 전체</option>${products.map(x=>`<option value="${esc(x)}"${x===iProductFilter?" selected":""}>${esc(x)}</option>`).join("")}`;
   $("iVendorSummary").innerHTML=vendors.length?vendors.map(x=>`<div><b>${esc(x.vendor)}</b><span class="inv-phone">${esc(x.phone||"전화번호 미입력")}</span></div>`).join(""):`<div class="empty">검색된 거래처가 없습니다</div>`;
   const list=invFor();
   const rows=[...list].sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(a.vendor).localeCompare(String(b.vendor)));
@@ -614,12 +626,13 @@ function renderInventory(){
 }
 async function persistInventory(message){saveBrowser();const synced=await saveCloud();renderInventory();toast(synced?`${message} · 모든 기기에 동기화했습니다`:`${message} · 이 기기에 저장했습니다`);}
 async function deleteInventory(id){if(!confirm("이 제품 내역을 삭제할까요?"))return;inventory=inventory.filter(x=>x.id!==id);try{await persistInventory("제품 내역을 삭제했습니다");}catch(e){toast("저장하지 못했습니다: "+(e.message||""));}}
-segs("invSeg",f=>{iMode=f;$("iLookup").hidden=f!=="lookup";$("iStatementCard").hidden=f!=="lookup";$("iDownloadPanel").hidden=f!=="download";});
-$("iMonthPicker").onchange=e=>{const [y,m]=(e.target.value||"").split("-");if(y&&m){iCur={y:+y,m:+m};renderInventory();}};
-$("iSearch").oninput=e=>{iSearchTerm=e.target.value.trim();renderInventory();};
-$("iDownload").onclick=()=>{const month=$("iDownloadMonth").value||invMonthKey(),[y,m]=month.split("-").map(Number),rows=[["조회 월",`${y}년 ${m}월`],["거래처","전화번호"],...vendorDirectory.map(x=>[x.vendor,x.phone||""])];const csv="\uFEFF"+rows.map(r=>r.map(v=>`\"${String(v).replace(/\"/g,'\"\"')}\"`).join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=`누디프_거래처_${month}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
+function readInventoryFilters(){const start=$("iStart").value,end=$("iEnd").value;if(!start||!end||start>end){toast("시작일과 종료일을 확인하세요.");return false;}iRange={start,end};iVendorFilter=$("iVendorSelect").value;iProductFilter=$("iProductSelect").value;renderInventory();return true;}
+document.querySelectorAll("[data-irange]").forEach(b=>b.onclick=()=>{setInventoryRange(b.dataset.irange);renderInventory();});
+$("iSearchBtn").onclick=readInventoryFilters;
+$("iReset").onclick=()=>{setInventoryRange("month");iVendorFilter="";iProductFilter="";renderInventory();};
+$("iDownload").onclick=()=>{if(!readInventoryFilters())return;const rows=[["기간",invPeriodLabel()],["거래일","상호명","전화번호","제품명","수량","금액"],...invFor().sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(x=>[x.date,x.vendor,x.phone||"",x.product,x.qtyCheck?"확인 필요":x.qty||0,x.amount||0])],csv="\uFEFF"+rows.map(r=>r.map(v=>`\"${String(v).replace(/\"/g,'\"\"')}\"`).join(",")).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=`누디프_재고_${iRange.start}_${iRange.end}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
 $("iDate").value=todayISO();
-$("iForm").addEventListener("submit",async e=>{e.preventDefault();const date=$("iDate").value,vendor=$("iVendorName").value.trim(),phone=$("iPhone").value.trim(),product=$("iProduct").value.trim(),qty=+$("iQty").value,amount=+$("iAmount").value;if(!date||!vendor||!product||!qty){$("iStatus").textContent="거래일·상호명·제품명·수량을 입력하세요.";return;}const rec={id:`inv-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,date,vendor,phone,product,qty,amount};inventory.push(rec);iCur={y:+date.slice(0,4),m:+date.slice(5,7)};iSearchTerm="";try{await persistInventory("제품을 재고에 추가했습니다");$("iProduct").value="";$("iQty").value="";$("iAmount").value="";$("iStatus").textContent="추가 완료";}catch(err){inventory=inventory.filter(x=>x.id!==rec.id);$("iStatus").textContent="저장하지 못했습니다: "+(err.message||"");}});
+$("iForm").addEventListener("submit",async e=>{e.preventDefault();const date=$("iDate").value,vendor=$("iVendorName").value.trim(),phone=$("iPhone").value.trim(),product=$("iProduct").value.trim(),qty=+$("iQty").value,amount=+$("iAmount").value;if(!date||!vendor||!product||!qty){$("iStatus").textContent="거래일·상호명·제품명·수량을 입력하세요.";return;}const rec={id:`inv-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,date,vendor,phone,product,qty,amount};inventory.push(rec);const d=new Date(`${date}T00:00:00`);iRange=invMonthRange(d.getFullYear(),d.getMonth());iVendorFilter="";iProductFilter="";try{await persistInventory("제품을 재고에 추가했습니다");$("iProduct").value="";$("iQty").value="";$("iAmount").value="";$("iStatus").textContent="추가 완료";}catch(err){inventory=inventory.filter(x=>x.id!==rec.id);$("iStatus").textContent="저장하지 못했습니다: "+(err.message||"");}});
 
 let receiptDraft=null;
 function receiptReview(){
@@ -631,7 +644,7 @@ async function applyReceiptDraft(){
   const date=$("rDate").value,vendor=$("rVendor").value.trim(),phone=$("rPhone").value.trim();
   const items=receiptDraft.items.map((x,i)=>({product:document.querySelector(`[data-rproduct="${i}"]`).value.trim(),qty:+document.querySelector(`[data-rqty="${i}"]`).value,amount:+document.querySelector(`[data-ramount="${i}"]`).value}));
   if(!date||!vendor||items.some(x=>!x.product||!x.qty||x.amount<0)){toast("거래일·상호명·제품명·수량을 확인하세요.");return;}
-  const ids=[];items.forEach((x,i)=>{const rec={id:`photo-${Date.now()}-${i}`,date,vendor,phone,...x};inventory.push(rec);ids.push(rec.id);});iCur={y:+date.slice(0,4),m:+date.slice(5,7)};iSearchTerm="";
+  const ids=[];items.forEach((x,i)=>{const rec={id:`photo-${Date.now()}-${i}`,date,vendor,phone,...x};inventory.push(rec);ids.push(rec.id);});const d=new Date(`${date}T00:00:00`);iRange=invMonthRange(d.getFullYear(),d.getMonth());iVendorFilter="";iProductFilter="";
   try{await persistInventory(`${items.length}개 품목을 재고에 반영했습니다`);receiptDraft=null;$("receiptFile").value="";$("receiptStatus").textContent="반영 완료 · 다음 거래명세서 사진을 선택하세요.";receiptReview();}catch(e){inventory=inventory.filter(x=>!ids.includes(x.id));$("receiptStatus").textContent="저장하지 못했습니다: "+(e.message||"");}
 }
 async function readReceiptFile(file){
