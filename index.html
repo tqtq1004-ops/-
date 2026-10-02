@@ -81,6 +81,10 @@ h3{font-size:.95rem;font-weight:600}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:4px;min-width:0;box-shadow:var(--shadow)}
 .kpi .v{font-size:1.4rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
 .kpi .s{font-size:.8rem;color:var(--muted)}
+.partner-breakdown{display:grid;gap:6px;margin-top:8px;font-size:.8rem;color:var(--muted)}
+.partner-breakdown>div{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.partner-breakdown b{color:var(--text);font-weight:650;font-variant-numeric:tabular-nums;white-space:nowrap}
+.partner-breakdown .rate b{color:var(--accent)}
 .up{color:var(--naver)} .down{color:var(--alert)}
 .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:middle}
 .monthnav{display:flex;align-items:center;gap:6px}
@@ -283,8 +287,8 @@ tr.dim td{opacity:.45}
     </div>
     <div class="kpis">
       <div class="kpi"><span class="lbl">총 공동비용</span><span class="v" id="pCost">₩0</span><span class="s" id="pCostS">—</span></div>
-      <div class="kpi"><span class="lbl">건한 순수익</span><span class="v" id="pProfit">₩0</span><span class="s" id="pProfitS">—</span></div>
-      <div class="kpi"><span class="lbl">근영 순수익</span><span class="v" id="pMargin">₩0</span><span class="s" id="pMarginS">—</span></div>
+      <div class="kpi"><span class="lbl">건한 순수익</span><span class="v" id="pProfit">₩0</span><div class="partner-breakdown" id="pProfitS"></div></div>
+      <div class="kpi"><span class="lbl">근영 순수익</span><span class="v" id="pMargin">₩0</span><div class="partner-breakdown" id="pMarginS"></div></div>
       <div class="kpi"><span class="lbl">정산 상태</span><span class="v" id="pState" style="font-size:1.05rem">—</span><span class="s"><a href="#close" style="color:var(--accent)">월 정산 열기 →</a></span></div>
     </div>
     <div class="grid2">
@@ -577,13 +581,17 @@ function barList(rows,total,color){
   const max=Math.max(1,...rows.map(r=>r[1]));
   return rows.map(([l,v])=>`<div class="bar"><span>${esc(l)}</span><div class="track"><div class="fill" style="width:${(v/max*100).toFixed(1)}%;background:${color}"></div></div><span class="amt">${won(v)}${total?` <span class="muted">${Math.round(v/total*100)}%</span>`:""}</span></div>`).join("");
 }
+function partnerBreakdown(gross,cost,profit){
+  const rate=gross?profit/gross*100:0;
+  return `<div><span>총매출</span><b>${won(gross)}</b></div><div><span>공동비용 부담액</span><b>− ${won(cost)}</b></div><div class="rate"><span>순이익률</span><b>${rate.toFixed(1)}%</b></div>`;
+}
 function renderPL(){
   const mk=mKey(cur.y,cur.m),pl=monthPL(mk),c=allClose[mk];
   $("pCost").textContent=won(pl.cost);$("pCostS").textContent=`${pl.items.filter(x=>x[1]).length}개 항목`;
   $("pProfit").textContent=won(pl.partners.건한);$("pProfit").className="v "+(pl.partners.건한>=0?"profit-pos":"profit-neg");
-  $("pProfitS").textContent=`총매출 ${won(pl.partnerGross.건한)} − 공동비용 ${won(pl.cost/2)}`;
+  $("pProfitS").innerHTML=partnerBreakdown(pl.partnerGross.건한,pl.cost/2,pl.partners.건한);
   $("pMargin").textContent=won(pl.partners.근영);$("pMargin").className="v "+(pl.partners.근영>=0?"profit-pos":"profit-neg");
-  $("pMarginS").textContent=`총매출 ${won(pl.partnerGross.근영)} − 공동비용 ${won(pl.cost/2)}`;
+  $("pMarginS").innerHTML=partnerBreakdown(pl.partnerGross.근영,pl.cost/2,pl.partners.근영);
   $("pState").innerHTML=c&&c.closedAt?`<span class="pill">정산 완료</span>`:`<span class="pill warn">정산 전</span>`;
   const ds=pl.designers.filter(x=>x[1]),dsum=ds.reduce((s,x)=>s+x[1],0);
   $("dsBars").innerHTML=ds.length?barList(ds.sort((a,b)=>b[1]-a[1]),dsum,"var(--accent)"):`<div class="empty">핸드SOS 엑셀에서 ‘담당 디자이너’ 열을 지정하거나 월 정산에서 직접 입력하세요</div>`;
