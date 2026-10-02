@@ -598,7 +598,7 @@ function renderInventory(){
   $("iVendorSummary").innerHTML=vendorRows.length?vendorRows.map(([v,x])=>`<div><b>${esc(v)}</b><span class="inv-phone">${esc(x.phone||"전화번호 미입력")}</span><span>${won(x.amount)} · ${x.qty.toLocaleString("ko-KR")}개</span></div>`).join(""):`<div class="empty">${iCur.m}월에 등록된 거래명세서가 없습니다</div>`;
   const byProduct={};list.forEach(x=>{const k=x.product||"제품명 미입력";byProduct[k]=(byProduct[k]||0)+(+x.qty||0);});
   const products=Object.entries(byProduct).sort((a,b)=>b[1]-a[1]);
-  $("iProductSummary").innerHTML=products.length?barList(products,qty(list),"var(--accent)"):`<div class="empty">선택한 조건에 입고 제품이 없습니다</div>`;
+  $("iProductSummary").innerHTML=products.length?qtyBarList(products,qty(list)):`<div class="empty">선택한 조건에 입고 제품이 없습니다</div>`;
   const rows=[...list].sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(a.vendor).localeCompare(String(b.vendor)));
   $("iTable").innerHTML=`<thead><tr><th>거래일</th><th>상호 · 전화번호</th><th>제품명</th><th class="r">수량</th><th class="r">금액</th><th></th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.vendor)}<br><span class="inv-phone">${esc(x.phone||"—")}</span></td><td>${esc(x.product)}</td><td class="r">${(+x.qty||0).toLocaleString("ko-KR")}</td><td class="r">${won(x.amount)}</td><td><button class="ghost" data-idel="${esc(x.id)}" aria-label="삭제">×</button></td></tr>`).join("")||`<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">등록된 거래명세서가 없습니다</td></tr>`}</tbody>`;
   $("iListStatus").textContent=`${rows.length}개 품목 · 매입액 ${won(sum(list))}`;
@@ -606,6 +606,7 @@ function renderInventory(){
 }
 async function persistInventory(message){saveBrowser();const synced=await saveCloud();renderInventory();toast(synced?`${message} · 모든 기기에 동기화했습니다`:`${message} · 이 기기에 저장했습니다`);}
 async function deleteInventory(id){if(!confirm("이 제품 내역을 삭제할까요?"))return;inventory=inventory.filter(x=>x.id!==id);try{await persistInventory("제품 내역을 삭제했습니다");}catch(e){toast("저장하지 못했습니다: "+(e.message||""));}}
+function qtyBarList(rows,total){const max=Math.max(1,...rows.map(r=>r[1]));return rows.map(([name,count])=>`<div class="bar"><span>${esc(name)}</span><div class="track"><div class="fill" style="width:${(count/max*100).toFixed(1)}%"></div></div><span class="amt">${count.toLocaleString("ko-KR")}개${total?` <span class="muted">${Math.round(count/total*100)}%</span>`:""}</span></div>`).join("");}
 $("iVendor").onchange=e=>{iVendorFilter=e.target.value;renderInventory();};
 $("iPrev").onclick=()=>{iCur=shift(iCur.y,iCur.m,-1);renderInventory();};
 $("iNext").onclick=()=>{iCur=shift(iCur.y,iCur.m,1);renderInventory();};
