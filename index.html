@@ -304,7 +304,7 @@ tr.dim td{opacity:.45}
   <section class="page" data-page="home">
     <div class="page-h"><div><h1>안녕하세요 👋</h1><p id="homeDate">—</p></div></div>
     <div class="tiles">
-      <a class="tile" href="#sales"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-chart"/></svg></div><h3>이번 달 매출</h3></div><div class="t-v" id="hSales">₩0</div><div class="t-s" id="hSalesS">—</div></a>
+      <a class="tile" href="#sales"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-chart"/></svg></div><h3>최근 정산 매출</h3></div><div class="t-v" id="hSales">₩0</div><div class="t-s" id="hSalesS">—</div></a>
       <a class="tile" href="#sales"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-chart"/></svg></div><h3>건한 · 근영 순수익</h3></div><div class="t-v" id="hToday">—</div><div class="t-s" id="hTodayS">—</div></a>
       <a class="tile" href="#reservations"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-cal"/></svg></div><h3>예약 현황</h3></div><div class="t-v" id="hResv">0명</div><div class="t-s" id="hResvS">오늘 방문 예정</div></a>
       <a class="tile" href="#refs"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-img"/></svg></div><h3>고객 레퍼런스</h3></div><div class="t-v" id="hRefs">0건</div><div class="t-s">확인하지 않은 새 레퍼런스</div></a>
@@ -594,7 +594,7 @@ async function reconnectCloud(){
   syncKey=entered.trim();ls.set("nudif-sync-key",syncKey);$("cSync").disabled=true;showCloudState(false,"연결 확인 중…");
   try{
     await loadCloud();saveBrowser();await saveCloud();
-    closeInitialized=false;draft=null;dirty=false;renderClose(true);renderPL();renderHome();renderDesigners();renderInventory();
+    setCurrentToLatestClosed();subscribeMonth();closeInitialized=false;draft=null;dirty=false;renderClose(true);renderHome();renderDesigners();renderInventory();
     showCloudState(true,"모든 기기 동기화 연결됨");toast("공용 저장소에 연결했습니다");return true;
   }catch(e){
     syncKey="";ls.set("nudif-sync-key","");showCloudState(false,e.message||"동기화 연결 실패");toast("관리 비밀번호를 확인하세요");return false;
@@ -665,6 +665,8 @@ function route(){
   let r=(location.hash||"#home").slice(1);
   if(r==="more"){document.body.classList.add("drawer");history.replaceState(null,"",route.last?"#"+route.last:"#home");return;}
   if(!TITLES[r]) r="home"; route.last=r;
+  if(r==="home"){setCurrentToLatestClosed();renderHome();}
+  if(r==="sales"){setCurrentToLatestClosed();subscribeMonth();}
   if(r==="close") renderClose(true);
   if(r==="designers") renderDesigners();
   if(r==="inventory") renderInventory();
@@ -743,7 +745,7 @@ function sums(days){let nv=0,wk=0,nn=0,wn=0,open=0;for(const k in(days||{})){con
 function renderKpis(){
   const mk=mKey(cur.y,cur.m),s=sums(monthData.days),p=sums(prevMonthData.days);
   const total=fieldVal(mk,"rev_total").v||s.total;
-  const prev=fieldVal(mKey(shift(cur.y,cur.m,-1).y,shift(cur.y,cur.m,-1).m),"rev_total").v||p.total;
+  const prevKey=previousClosedKey(mk),prev=prevKey?(fieldVal(prevKey,"rev_total").v||p.total):0;
   $("kTotal").textContent=won(total);
   if(prev>0){const pct=(total-prev)/prev*100;$("kTotalS").innerHTML=`전월 대비 <span class="${pct>=0?"up":"down"}">${pct>=0?"▲":"▼"} ${Math.abs(pct).toFixed(1)}%</span>`;}else $("kTotalS").textContent="결제액 기준";
 }
@@ -770,7 +772,8 @@ function renderDayTable(){
 }
 function renderSales(){$("mLabel").textContent=`${cur.y}.${pad(cur.m)}`;renderKpis();}
 function subscribeMonth(){
-  monthData=allMonths[mKey(cur.y,cur.m)]||{};const p=shift(cur.y,cur.m,-1);prevMonthData=allMonths[mKey(p.y,p.m)]||{};
+  const mk=mKey(cur.y,cur.m),prevKey=previousClosedKey(mk);
+  monthData=allMonths[mk]||{};prevMonthData=prevKey?(allMonths[prevKey]||{}):{};
   renderSales();renderPL();
   $("dbStatus").textContent=monthData.updatedAt?`마지막 반영 ${new Date(monthData.updatedAt).toLocaleString("ko-KR")}`:"이 달에는 아직 POS 매출이 없습니다. ‘매출 데이터 입력’에서 핸드SOS 엑셀을 올리세요.";
 }
@@ -831,7 +834,7 @@ function renderPL(){
   const ds=pl.designers.filter(x=>x[1]),dsum=ds.reduce((s,x)=>s+x[1],0);
   $("dsBars").innerHTML=ds.length?barList(ds.sort((a,b)=>b[1]-a[1]),dsum,"var(--accent)"):`<div class="empty">핸드SOS 엑셀에서 ‘담당 디자이너’ 열을 지정하거나 월 정산에서 직접 입력하세요</div>`;
   $("dsNote").textContent=dsum?`합계 ${won(dsum)}`:"";
-  const prev=shift(cur.y,cur.m,-1),prevKey=mKey(prev.y,prev.m),prevPL=monthPL(prevKey);
+  const prevKey=previousClosedKey(mk),prevPL=monthPL(prevKey||"");
   $("designerCompare").innerHTML=["건한","근영","혜진"].map(name=>designerComparison(name,pl,prevPL,!!allClose[prevKey]?.closedAt)).join("");
   const it=pl.items.filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
   $("costBars").innerHTML=it.length?barList(it,pl.cost,"var(--muted)"):`<div class="empty">월 정산에서 비용을 입력하면 표시됩니다</div>`;
@@ -861,6 +864,11 @@ function renderTrend(){
 }
 
 function savedCloseKeys(){return Object.keys(allClose).filter(k=>allClose[k]?.closedAt).sort();}
+function previousClosedKey(mk){return savedCloseKeys().filter(k=>k<mk).at(-1)||"";}
+function setCurrentToLatestClosed(){
+  const latest=latestClosedKey();if(!latest)return"";
+  const [y,m]=latest.split("-").map(Number);cur={y,m};return latest;
+}
 function renderDesigners(){
   const name=cfg.designers.includes("혜진")?"혜진":(cfg.designers[0]||"혜진");
   const data=savedCloseKeys().map(k=>({key:k,value:designerRevenue(monthPL(k),name)}));
@@ -943,7 +951,7 @@ $("cSave").onclick=async()=>{
   const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;$("cSave").textContent="저장 확인 중…";
   try{const pl=monthPL(mk,draft);
     allClose[mk]={...(allClose[mk]||{}),manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,closedAt:Date.now(),summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}};
-    saveBrowser();await saveCloud();dirty=false;closeEditing=false;renderClose(false);renderPL();renderHome();renderDesigners();
+    saveBrowser();await saveCloud();dirty=false;closeEditing=false;setCurrentToLatestClosed();subscribeMonth();renderClose(false);renderHome();renderDesigners();
     showCloudState(true,"MongoDB 저장 확인 완료");toast(`${cCur.m}월 정산 저장을 확인했습니다`);
   }catch(e){cloudConnected=false;$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);showCloudState(false,"저장 확인 실패 · 다시 연결 필요");}
   $("cSave").disabled=closeLocked()||!cloudConnected;$("cSave").textContent="정산 저장";
@@ -980,12 +988,13 @@ async function writeDays(byMonth,mode){
 
 /* ---------- home ---------- */
 function renderHome(){
-  const d=new Date();$("homeDate").textContent=d.toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"long"});
-  const nowK=mKey(d.getFullYear(),d.getMonth()+1);thisMonthData=allMonths[nowK]||{};const s=sums(thisMonthData.days),pl=monthPL(nowK);
-  $("hSales").textContent=won(s.total);$("hSalesS").textContent=`결제액 기준 · ${s.count}건`;
+  const latest=latestClosedKey(),fallback=new Date(),homeKey=latest||mKey(fallback.getFullYear(),fallback.getMonth()+1),[hy,hm]=homeKey.split("-").map(Number);
+  $("homeDate").textContent=latest?`${hy}년 ${hm}월 저장 완료 정산 기준`:fallback.toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric",weekday:"long"});
+  thisMonthData=allMonths[homeKey]||{};const s=sums(thisMonthData.days),pl=monthPL(homeKey);
+  $("hSales").textContent=won(pl.rev||s.total);$("hSalesS").textContent=`${hy}년 ${hm}월 · 결제액 기준`;
   $("hToday").textContent=`건한 ${won(pl.partners.건한)}`;$("hToday").className="t-v "+(pl.partners.건한>=0?"profit-pos":"profit-neg");$("hTodayS").textContent=`근영 ${won(pl.partners.근영)}`;
-  const pk=shift(d.getFullYear(),d.getMonth()+1,-1),pkey=mKey(pk.y,pk.m),pc=allClose[pkey];
-  $("hClose").textContent=pc&&pc.closedAt?`${pk.m}월 정산 완료`:`${pk.m}월 정산 필요`;
+  const pc=allClose[homeKey];
+  $("hClose").textContent=pc&&pc.closedAt?`${hm}월 정산 완료`:`${hm}월 정산 필요`;
   document.querySelectorAll('[data-b="close"]').forEach(b=>b.hidden=!!(pc&&pc.closedAt));
   $("hImportS").textContent=thisMonthData.updatedAt?`마지막 반영 ${new Date(thisMonthData.updatedAt).toLocaleDateString("ko-KR",{month:"short",day:"numeric"})}`:"열 지정 후 한 번에 반영";
   const tdy=refs.filter(r=>visitISO(r)===todayISO());$("hResv").textContent=`${tdy.length}명`;
@@ -1211,12 +1220,13 @@ $("impManual").addEventListener("submit",async e=>{
 
 /* ---------- boot ---------- */
 const recoveredBrowserState=loadBrowser();
+setCurrentToLatestClosed();
 renderDefs();route();renderSales();renderPL();renderDesigners();renderRefs();renderInventory();
 (async()=>{
   try{const cloudLoaded=await loadCloud();if(cloudLoaded&&recoveredBrowserState){saveBrowser();await saveCloud();}showCloudState(cloudLoaded,cloudLoaded?"모든 기기 동기화 연결됨":"이 기기에만 저장됨 · 연결 필요");}
   catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");showCloudState(false,"동기화 연결 필요");}
   savedCfg=JSON.parse(ls.get("nudif-import-config")||"null");
-  subscribeMonth();renderHome();renderDefs();renderDesigners();renderInventory();
+  setCurrentToLatestClosed();subscribeMonth();renderHome();renderDefs();renderDesigners();renderInventory();
   if((location.hash||"#home")==="#close"){closeInitialized=false;renderClose(true);}
   $("syncStatus").textContent="레퍼런스 동기화는 Jotform 연결 후 사용할 수 있습니다.";$("jfState").textContent="아직 확인하지 않음";
 })();
