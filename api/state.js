@@ -30,16 +30,6 @@ function classifyStorageError(error) {
 module.exports = async function handler(req, res) {
   cors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
-  // Temporary read-only connection probe. It never reads or writes dashboard data.
-  if (req.method === "GET" && req.query?.health === "connection") {
-    try {
-      const col = await collection();
-      await col.findOne({ _id: "__connection_probe__" }, { projection: { _id: 1 } });
-      return res.status(200).json({ ok: true });
-    } catch (error) {
-      return res.status(503).json({ ok: false, reason: classifyStorageError(error), code: error?.code || null });
-    }
-  }
   if (req.headers["x-dashboard-key"] !== process.env.DASHBOARD_SYNC_KEY) {
     return res.status(401).json({ error: "비밀번호가 올바르지 않습니다.", stage: "authentication" });
   }
