@@ -40,6 +40,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15p
 button,select,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:8px 14px;min-height:40px}
 button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+button{transition:transform .12s ease,background-color .16s ease,border-color .16s ease,opacity .16s ease}
+button:active{transform:scale(.98)}
 button.ghost{background:none;border-color:transparent}
 button:disabled{opacity:.5;cursor:default}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -69,6 +71,7 @@ h3{font-size:.95rem;font-weight:600}
 .topbar{display:none}
 .tabbar{display:none}
 .page{max-width:1080px;margin:0 auto;padding-inline:28px;padding-block:28px 56px;display:flex;flex-direction:column;gap:20px}
+.page:not([hidden]){animation:page-in .18s ease-out}
 .page-h{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
 .page-h p{margin:4px 0 0;color:var(--muted);font-size:.9rem}
 
@@ -156,6 +159,11 @@ tr.dim td{opacity:.45}
 .bar .fill{height:100%;border-radius:999px;background:var(--accent)}
 .bar .amt{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .profit-pos{color:var(--naver)} .profit-neg{color:var(--alert)}
+.compare-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.compare-card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface2);display:flex;flex-direction:column;gap:5px}
+.compare-card b{font-size:1.12rem;font-variant-numeric:tabular-nums}.compare-card small{color:var(--muted)}
+.designer-chart{overflow-x:auto}.designer-chart svg{display:block;width:100%;min-width:480px;height:auto}
+.designer-hero{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}.designer-hero .amount{font-size:1.8rem;font-weight:700;font-variant-numeric:tabular-nums}
 /* inventory */
 .inv-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .inv-summary .kpi{box-shadow:none}
@@ -188,6 +196,8 @@ tr.dim td{opacity:.45}
 .crow .cl small{font-size:.75rem;color:var(--muted)}
 .crow input{text-align:right;font-variant-numeric:tabular-nums;width:100%}
 .crow input.ov{border-color:var(--accent);background:var(--accent-soft)}
+.crow input:disabled,.xrow input:disabled,textarea:disabled{opacity:.72;background:var(--surface2);cursor:not-allowed}
+.close-state{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .crow output{display:block;text-align:right;font-weight:700;font-variant-numeric:tabular-nums;padding:9px 12px;border-radius:10px;background:var(--surface2);color:var(--accent)}
 .crow .rst{min-height:36px;min-width:36px;padding:0;font-size:.8rem;border:none;background:none;color:var(--muted)}
 .src{font-size:.68rem;border-radius:6px;padding:1px 6px;font-weight:600;align-self:flex-start}
@@ -208,9 +218,13 @@ tr.dim td{opacity:.45}
   .inv-controls label{min-width:0;flex:1}
   .sumbar{bottom:calc(var(--tabbar) + 10px + env(safe-area-inset-bottom,0px));grid-template-columns:repeat(3,minmax(0,1fr));padding:10px 12px}
   .sumbar button{grid-column:1/-1}
+  .compare-grid{grid-template-columns:1fr}
+  .designer-hero{grid-template-columns:1fr}
   .xrow{grid-template-columns:minmax(0,1fr) 110px 40px}
   .xrow .xr{grid-column:1/-2}
 }
+@keyframes page-in{from{opacity:.01;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:12px;font-size:.9rem;max-width:calc(100% - 32px);z-index:50;box-shadow:0 8px 28px rgba(0,0,0,.2)}
 .scrim{display:none}
 
@@ -264,6 +278,7 @@ tr.dim td{opacity:.45}
     <a href="#home" data-r="home"><svg class="ico"><use href="#i-home"/></svg>홈</a>
     <div class="navsec">운영</div>
     <a href="#sales" data-r="sales"><svg class="ico"><use href="#i-chart"/></svg>매출·손익 대시보드</a>
+    <a href="#designers" data-r="designers"><svg class="ico"><use href="#i-chart"/></svg>디자이너</a>
     <a href="#close" data-r="close"><svg class="ico"><use href="#i-pen"/></svg>월 정산 입력<span class="badge" data-b="close" hidden>!</span></a>
     <a href="#reservations" data-r="reservations"><svg class="ico"><use href="#i-cal"/></svg>예약 현황<span class="badge" data-b="resv" hidden></span></a>
     <a href="#refs" data-r="refs"><svg class="ico"><use href="#i-img"/></svg>고객 레퍼런스<span class="badge" data-b="refs" hidden></span></a>
@@ -321,7 +336,7 @@ tr.dim td{opacity:.45}
       <div class="card"><div class="card-h"><h2>디자이너별 매출</h2><span class="lbl" id="dsNote"></span></div><div class="bars" id="dsBars"></div></div>
       <div class="card"><div class="card-h"><h2>비용 구성</h2><span class="lbl" id="costNote"></span></div><div class="bars" id="costBars"></div></div>
     </div>
-    <div class="card"><div class="card-h"><h2>디자이너별 고객 수</h2><span class="lbl" id="dcNote"></span></div><div class="bars" id="dcBars"></div></div>
+    <div class="card"><div class="card-h"><h2>디자이너별 전월 대비</h2><span class="lbl">월 정산에 저장된 개인매출 기준</span></div><div class="compare-grid" id="designerCompare"></div></div>
     <div class="card">
       <div class="card-h"><h2>월별 매출 · 손익 추이</h2><div class="legend"><span><span class="sw" style="background:var(--accent)"></span>총매출</span><span><span class="sw" style="background:var(--muted)"></span>총공동비용</span><span><span class="sw" style="background:#477F78;border-radius:50%"></span>건한 순수익</span><span><span class="sw" style="background:#7A719B;border-radius:50%"></span>근영 순수익</span></div></div>
       <div class="chartbox" id="trend"></div>
@@ -329,12 +344,22 @@ tr.dim td{opacity:.45}
     </div>
   </section>
 
+  <!-- DESIGNERS -->
+  <section class="page" data-page="designers" hidden>
+    <div class="page-h"><div><h1>디자이너</h1><p>월 정산에 저장한 디자이너 매출을 자동으로 보여줍니다.</p></div></div>
+    <div class="card">
+      <div class="designer-hero"><div><span class="lbl" id="designerName">혜진</span><div class="amount" id="designerRevenue">₩0</div><small id="designerDiff" class="muted">전월 데이터 없음</small></div><span class="pill" id="designerMonth">—</span></div>
+    </div>
+    <div class="card"><div class="card-h"><h2>월별 매출 그래프</h2><span class="lbl">저장 완료된 월 정산 기준</span></div><div class="designer-chart" id="designerTrend"></div></div>
+  </section>
+
   <!-- CLOSE -->
   <section class="page" data-page="close" hidden>
     <div class="page-h">
-      <div><h1>월 정산 입력</h1><p>Slack에 쓰던 항목 그대로입니다. 자동으로 채워진 값은 눌러서 바꾸면 직접 입력으로 덮어씁니다.</p></div>
+      <div><h1>월 정산 입력</h1><p>입력하는 즉시 현재 기준 정산 결과가 계산됩니다.</p></div>
       <div class="monthnav"><button id="cPrev" aria-label="이전 달">‹</button><span class="m" id="cLabel">—</span><button id="cNext" aria-label="다음 달">›</button></div>
     </div>
+    <div class="close-state"><span class="pill" id="cMode">입력 중</span><button id="cEdit" type="button" hidden>수정</button></div>
     <div class="legend" style="flex-wrap:wrap"><span><span class="src pos">POS</span> 핸드SOS 엑셀</span><span><span class="src gmail">Gmail</span> 카드 명세서 자동</span><span><span class="src default">기본값</span> 매달 고정</span><span><span class="src manual">직접 입력</span> 덮어씀</span><span><span class="src none">미입력</span></span></div>
     <div class="card"><div class="cgroup" id="cgRev"><h3>매출</h3></div><div id="revWarn"></div></div>
     <div class="card"><div class="cgroup" id="cgFixed"><h3>고정비</h3></div></div>
@@ -583,12 +608,13 @@ $("themeBtnTop").onclick=$("themeBtnSide").onclick=()=>applyTheme(isDark()?"ligh
 applyTheme(ls.get("theme")||"system");
 
 /* ---------- routing ---------- */
-const TITLES={home:"홈",sales:"매출·손익",close:"월 정산 입력",reservations:"예약 현황",refs:"고객 레퍼런스",inventory:"재고관리",import:"매출 데이터 입력",settings:"설정"};
+const TITLES={home:"홈",sales:"매출·손익",designers:"디자이너",close:"월 정산 입력",reservations:"예약 현황",refs:"고객 레퍼런스",inventory:"재고관리",import:"매출 데이터 입력",settings:"설정"};
 function route(){
   let r=(location.hash||"#home").slice(1);
   if(r==="more"){document.body.classList.add("drawer");history.replaceState(null,"",route.last?"#"+route.last:"#home");return;}
   if(!TITLES[r]) r="home"; route.last=r;
   if(r==="close") renderClose(true);
+  if(r==="designers") renderDesigners();
   if(r==="inventory") renderInventory();
   document.querySelectorAll("[data-page]").forEach(p=>p.hidden=p.dataset.page!==r);
   document.querySelectorAll("[data-r]").forEach(a=>{if(a.dataset.r===r)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current");});
@@ -713,19 +739,30 @@ function fieldVal(mk,key,draft){
   return{v:0,src:"none"};
 }
 function monthPL(mk,draft){
-  const rev=fieldVal(mk,"rev_total",draft).v,items=COSTS.map(([k])=>[costLabel(k),fieldVal(mk,k,draft).v]);
+  const personal=cfg.designers.map(n=>[n,fieldVal(mk,"rev:"+n,draft).v]);
+  const enteredTotal=fieldVal(mk,"rev_total",draft).v;
+  const rev=enteredTotal||personal.reduce((s,[,v])=>s+v,0),items=COSTS.map(([k])=>[costLabel(k),fieldVal(mk,k,draft).v]);
   const ex=((draft||allClose[mk]||{}).extras||[]).filter(x=>+x.amount);
   ex.forEach(x=>items.push([x.label||"추가 비용",+x.amount]));
   const cost=items.reduce((s,[,v])=>s+v,0);
   const geonhan=fieldVal(mk,"rev:건한",draft).v,geunyeong=fieldVal(mk,"rev:근영",draft).v,hyejin=fieldVal(mk,"rev:혜진",draft).v;
   const partnerGross={건한:geonhan+hyejin/2,근영:geunyeong+hyejin/2};
-  return{rev,cost,profit:rev-cost,items,designers:cfg.designers.map(n=>[n,fieldVal(mk,"rev:"+n,draft).v]),partnerGross,partners:{건한:partnerGross.건한-cost/2,근영:partnerGross.근영-cost/2}};
+  return{rev,cost,profit:rev-cost,items,designers:personal,partnerGross,partners:{건한:partnerGross.건한-cost/2,근영:partnerGross.근영-cost/2}};
 }
-function designerClientCount(mk,name){return (allMonths[mk]?.people?.[name]||[]).length;}
 const SRC={pos:"POS",gmail:"Gmail",default:"기본값",manual:"직접 입력",none:"미입력"};
 function barList(rows,total,color){
   const max=Math.max(1,...rows.map(r=>r[1]));
   return rows.map(([l,v])=>`<div class="bar"><span>${esc(l)}</span><div class="track"><div class="fill" style="width:${(v/max*100).toFixed(1)}%;background:${color}"></div></div><span class="amt">${won(v)}${total?` <span class="muted">${Math.round(v/total*100)}%</span>`:""}</span></div>`).join("");
+}
+function designerRevenue(pl,name){return pl.designers.find(x=>x[0]===name)?.[1]||0;}
+function comparisonText(current,previous,hasPrevious){
+  if(!hasPrevious)return `<span class="muted">전월 데이터 없음</span>`;
+  const diff=current-previous,rate=previous?diff/previous*100:(current?100:0),up=diff>=0;
+  return `<span class="${up?"up":"down"}">${up?"↑":"↓"} ${won(Math.abs(diff))} · ${up?"+":""}${rate.toFixed(1)}% 전월 대비</span>`;
+}
+function designerComparison(name,pl,prevPL,hasPrevious){
+  const current=designerRevenue(pl,name),previous=designerRevenue(prevPL,name);
+  return `<div class="compare-card"><span class="lbl">${esc(name)}</span><b>${won(current)}</b><small>${comparisonText(current,previous,hasPrevious)}</small></div>`;
 }
 function partnerBreakdown(gross,cost,profit){
   const rate=gross?profit/gross*100:0;
@@ -742,9 +779,8 @@ function renderPL(){
   const ds=pl.designers.filter(x=>x[1]),dsum=ds.reduce((s,x)=>s+x[1],0);
   $("dsBars").innerHTML=ds.length?barList(ds.sort((a,b)=>b[1]-a[1]),dsum,"var(--accent)"):`<div class="empty">핸드SOS 엑셀에서 ‘담당 디자이너’ 열을 지정하거나 월 정산에서 직접 입력하세요</div>`;
   $("dsNote").textContent=dsum?`합계 ${won(dsum)}`:"";
-  const dc=cfg.designers.map(n=>[n,designerClientCount(mk,n)]).filter(x=>x[1]);
-  $("dcBars").innerHTML=dc.length?barList(dc.sort((a,b)=>b[1]-a[1]),0,"var(--walkin)").replaceAll("₩",""):`<div class="empty">다음 매출 파일을 반영하면 담당자별 월간 고객 수가 표시됩니다</div>`;
-  $("dcNote").textContent=dc.length?`고객명 기준 합계 ${dc.reduce((s,x)=>s+x[1],0)}명`:"";
+  const prev=shift(cur.y,cur.m,-1),prevKey=mKey(prev.y,prev.m),prevPL=monthPL(prevKey);
+  $("designerCompare").innerHTML=["건한","근영","혜진"].map(name=>designerComparison(name,pl,prevPL,!!allClose[prevKey]?.closedAt)).join("");
   const it=pl.items.filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
   $("costBars").innerHTML=it.length?barList(it,pl.cost,"var(--muted)"):`<div class="empty">월 정산에서 비용을 입력하면 표시됩니다</div>`;
   $("costNote").textContent=pl.cost?`합계 ${won(pl.cost)}`:"";
@@ -772,39 +808,68 @@ function renderTrend(){
   $("trend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="월별 매출, 공동비용, 디자이너별 순수익">${g}</svg>`;
 }
 
+function savedCloseKeys(){return Object.keys(allClose).filter(k=>allClose[k]?.closedAt).sort();}
+function renderDesigners(){
+  const name=cfg.designers.includes("혜진")?"혜진":(cfg.designers[0]||"혜진");
+  const data=savedCloseKeys().map(k=>({key:k,value:designerRevenue(monthPL(k),name)}));
+  const latest=data[data.length-1],previous=data[data.length-2];
+  $("designerName").textContent=name;
+  $("designerRevenue").textContent=won(latest?.value||0);
+  $("designerMonth").textContent=latest?latest.key.replace("-", "."):"저장된 정산 없음";
+  $("designerDiff").innerHTML=previous?comparisonText(latest.value,previous.value,true):"전월 데이터 없음";
+  if(!data.length){$("designerTrend").innerHTML='<div class="empty">월 정산을 저장하면 매출 흐름이 이곳에 표시됩니다.</div>';return;}
+  const W=Math.max(520,data.length*88),H=235,L=46,R=18,T=20,B=34,iw=W-L-R,ih=H-T-B;
+  const max=Math.max(1,...data.map(x=>x.value)),step=niceStep(max),top=Math.ceil(max/step)*step;
+  const x=i=>L+(data.length===1?iw/2:i*iw/(data.length-1)),y=v=>T+ih-(v/top)*ih;
+  let g="";
+  for(let v=0;v<=top;v+=step)g+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)">${v>=10000?(v/10000).toLocaleString("ko-KR")+"만":v}</text>`;
+  const points=data.map((d,i)=>`${x(i)},${y(d.value)}`).join(" ");
+  if(data.length>1)g+=`<polyline points="${points}" fill="none" stroke="var(--accent)" stroke-width="3"/>`;
+  data.forEach((d,i)=>{g+=`<circle cx="${x(i)}" cy="${y(d.value)}" r="5" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"><title>${d.key} ${name} 매출 ${won(d.value)}</title></circle><text x="${x(i)}" y="${H-10}" text-anchor="middle" font-size="11" fill="var(--muted)">${+d.key.slice(5)}월</text>`;});
+  $("designerTrend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${name} 월별 매출 그래프">${g}</svg>`;
+}
+
 /* close form */
-let cCur={...cur},draft=null,dirty=false;
-function loadDraft(){const c=allClose[mKey(cCur.y,cCur.m)]||{};draft={manual:{...(c.manual||{})},extras:(c.extras||[]).map(x=>({...x})),memo:c.memo||""};dirty=false;}
+let cCur={...cur},draft=null,dirty=false,closeEditing=true,closeInitialized=false;
+function latestClosedKey(){return savedCloseKeys().at(-1)||"";}
+function loadDraft(editState){const c=allClose[mKey(cCur.y,cCur.m)]||{};draft={manual:{...(c.manual||{})},extras:(c.extras||[]).map(x=>({...x})),memo:c.memo||""};dirty=false;closeEditing=editState??!c.closedAt;}
+function closeLocked(){return !!allClose[mKey(cCur.y,cCur.m)]?.closedAt&&!closeEditing;}
 function closeRow(key,label,hint){
   const mk=mKey(cCur.y,cCur.m),f=fieldVal(mk,key,draft),ov=f.src==="manual";
   const autoF=fieldVal(mk,key,{manual:{}});
   const fixed=["rent","mgmt","parking","taxacct","loan","vat"].includes(key);
+  const locked=closeLocked(),state=locked?"disabled":(fixed?"readonly":"");
   return `<div class="crow"><div class="cl"><b>${esc(label)}</b><span class="src ${f.src}">${SRC[f.src]}</span>${ov&&autoF.v?`<small>자동값 ${won(autoF.v)}</small>`:hint?`<small>${esc(hint)}</small>`:""}</div>
-    <input inputmode="numeric" data-k="${esc(key)}" class="${ov?"ov":""}" value="${f.v?Math.round(f.v).toLocaleString("ko-KR"):""}" placeholder="0" aria-label="${esc(label)} 금액" ${fixed?"readonly":""}>
-    ${fixed?`<button class="rst" data-edit="${esc(key)}" aria-label="${esc(label)} 수정">수정</button>`:ov?`<button class="rst" data-reset="${esc(key)}" title="자동값으로 되돌리기" aria-label="${esc(label)} 자동값으로">↺</button>`:"<span></span>"}</div>`;
+    <input inputmode="numeric" data-k="${esc(key)}" class="${ov?"ov":""}" value="${f.v?Math.round(f.v).toLocaleString("ko-KR"):""}" placeholder="0" aria-label="${esc(label)} 금액" ${state}>
+    ${locked?"<span></span>":fixed?`<button class="rst" data-edit="${esc(key)}" aria-label="${esc(label)} 수정">수정</button>`:ov?`<button class="rst" data-reset="${esc(key)}" title="자동값으로 되돌리기" aria-label="${esc(label)} 자동값으로">↺</button>`:"<span></span>"}</div>`;
 }
 function partnerTotalRow(name){
   const pl=monthPL(mKey(cCur.y,cCur.m),draft);
   return `<div class="crow"><div class="cl"><b>${name} 총매출</b><span class="src default">계산값</span><small>${name} 개인매출 + 혜진 매출의 50%</small></div><output aria-label="${name} 총매출">${won(pl.partnerGross[name])}</output><span></span></div>`;
 }
 function renderClose(fromRoute){
-  if(fromRoute&&!dirty)loadDraft();if(!draft)loadDraft();
+  if(fromRoute){const latest=latestClosedKey();if(latest&&!dirty){const [y,m]=latest.split("-").map(Number);cCur={y,m};}closeInitialized=true;}
+  if(!draft||(fromRoute&&!dirty))loadDraft();
+  const locked=closeLocked(),saved=allClose[mKey(cCur.y,cCur.m)];
   $("cLabel").textContent=`${cCur.y}.${pad(cCur.m)}`;
+  $("cMode").textContent=locked?"저장 완료 · 읽기 전용":saved?.closedAt?"수정 중":"입력 중";
+  $("cMode").className=locked?"pill":"pill warn";
+  $("cEdit").hidden=!locked;
+  $("cSave").disabled=locked;
   const H=(id,t)=>{const el=$(id);el.innerHTML=`<h3>${t}</h3>`;return el;};
   H("cgRev","매출").insertAdjacentHTML("beforeend",closeRow("rev_total","총 매출","핸드SOS 엑셀 합계")+closeRow("rev:건한","건한 개인매출")+closeRow("rev:근영","근영 개인매출")+closeRow("rev:혜진","혜진 매출")+partnerTotalRow("건한")+partnerTotalRow("근영"));
   H("cgFixed","고정비").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="fixed").map(c=>closeRow(c[0],c[1],"매달 고정 · 수정 가능")).join(""));
   H("cgCard","카드 대금").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="card").map(c=>closeRow(c[0],c[1],"Gmail 명세서 연결 전에는 직접 입력")).join(""));
   H("cgStaff","인건비 · 기타").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="staff").map(c=>closeRow(c[0],costLabel(c[0]))).join(""));
-  $("extras").innerHTML=draft.extras.length?draft.extras.map((x,i)=>`<div class="xrow"><input data-x="${i}" data-f="label" value="${esc(x.label||"")}" placeholder="항목 (예: 염색약)" aria-label="추가 비용 항목"><input data-x="${i}" data-f="amount" inputmode="numeric" value="${x.amount?(+x.amount).toLocaleString("ko-KR"):""}" placeholder="금액" style="text-align:right" aria-label="추가 비용 금액"><input class="xr" data-x="${i}" data-f="reason" value="${esc(x.reason||"")}" placeholder="사유" aria-label="추가 비용 사유"><button class="rst" data-xdel="${i}" aria-label="삭제">✕</button></div>`).join(""):`<div class="muted" style="font-size:.86rem;padding:4px 0 8px">이번 달 추가 비용이 있으면 ‘+ 비용 추가’로 항목·금액·사유를 남기세요.</div>`;
-  $("cMemo").value=draft.memo||"";
+  $("extras").innerHTML=draft.extras.length?draft.extras.map((x,i)=>`<div class="xrow"><input data-x="${i}" data-f="label" value="${esc(x.label||"")}" placeholder="항목 (예: 염색약)" aria-label="추가 비용 항목" ${locked?"disabled":""}><input data-x="${i}" data-f="amount" inputmode="numeric" value="${x.amount?(+x.amount).toLocaleString("ko-KR"):""}" placeholder="금액" style="text-align:right" aria-label="추가 비용 금액" ${locked?"disabled":""}><input class="xr" data-x="${i}" data-f="reason" value="${esc(x.reason||"")}" placeholder="사유" aria-label="추가 비용 사유" ${locked?"disabled":""}>${locked?"<span></span>":`<button class="rst" data-xdel="${i}" aria-label="삭제">✕</button>`}</div>`).join(""):`<div class="muted" style="font-size:.86rem;padding:4px 0 8px">이번 달 추가 비용이 있으면 ‘+ 비용 추가’로 항목·금액·사유를 남기세요.</div>`;
+  $("cMemo").value=draft.memo||"";$("cMemo").disabled=locked;$("addExtra").disabled=locked;
   document.querySelectorAll("#cgRev input,#cgFixed input,#cgCard input,#cgStaff input").forEach(inp=>{
-    inp.oninput=()=>{const raw=inp.value.replace(/[^\d]/g,"");draft.manual[inp.dataset.k]=raw===""?0:+raw;inp.classList.add("ov");dirty=true;updateSum();};});
+    inp.oninput=()=>{const raw=inp.value.replace(/[^\d]/g,"");if(raw==="")delete draft.manual[inp.dataset.k];else draft.manual[inp.dataset.k]=+raw;inp.classList.add("ov");dirty=true;updateSum();};});
   document.querySelectorAll("[data-reset]").forEach(b=>b.onclick=()=>{delete draft.manual[b.dataset.reset];dirty=true;renderClose();});
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const inp=b.parentElement.querySelector("input");inp.readOnly=false;inp.focus();b.textContent="수정 중";});
   document.querySelectorAll("[data-x]").forEach(inp=>inp.oninput=()=>{const x=draft.extras[+inp.dataset.x];x[inp.dataset.f]=inp.dataset.f==="amount"?+(inp.value.replace(/[^\d]/g,""))||0:inp.value;dirty=true;updateSum();});
   document.querySelectorAll("[data-xdel]").forEach(b=>b.onclick=()=>{draft.extras.splice(+b.dataset.xdel,1);dirty=true;renderClose();});
-  const c=allClose[mKey(cCur.y,cCur.m)];
-  $("cStatus").textContent=dirty?"저장하지 않은 변경 사항이 있습니다.":c&&c.closedAt?`${new Date(c.closedAt).toLocaleString("ko-KR")}에 저장됨`:"아직 저장하지 않은 달입니다.";
+  $("cStatus").textContent=dirty?"저장하지 않은 변경 사항이 있습니다.":saved&&saved.closedAt?`${new Date(saved.closedAt).toLocaleString("ko-KR")}에 저장됨 · 수정 버튼을 누르면 변경할 수 있습니다.`:"아직 저장하지 않은 달입니다.";
   updateSum();
 }
 function updateSum(){
@@ -814,17 +879,18 @@ function updateSum(){
   $("revWarn").innerHTML=dsum&&pl.rev&&Math.abs(dsum-pl.rev)>=1000?`<div class="warnline">디자이너 매출 합계(${won(dsum)})가 총 매출과 ${won(Math.abs(pl.rev-dsum))} 차이 납니다.</div>`:"";
   if(dirty)$("cStatus").textContent="저장하지 않은 변경 사항이 있습니다.";
 }
-$("addExtra").onclick=()=>{draft.extras.push({label:"",amount:0,reason:""});dirty=true;renderClose();const l=document.querySelectorAll('#extras [data-f="label"]');l[l.length-1]?.focus();};
+$("addExtra").onclick=()=>{if(closeLocked())return;draft.extras.push({label:"",amount:0,reason:""});dirty=true;renderClose();const l=document.querySelectorAll('#extras [data-f="label"]');l[l.length-1]?.focus();};
 $("cMemo").oninput=()=>{draft.memo=$("cMemo").value;dirty=true;};
 function moveClose(d){if(dirty&&!moveClose.ok){$("cStatus").textContent="저장하지 않은 변경 사항이 있습니다. 한 번 더 누르면 버리고 이동합니다.";moveClose.ok=true;return;}moveClose.ok=false;cCur=shift(cCur.y,cCur.m,d);loadDraft();renderClose();}
 $("cPrev").onclick=()=>moveClose(-1);$("cNext").onclick=()=>moveClose(1);
+$("cEdit").onclick=()=>{closeEditing=true;dirty=false;renderClose(false);};
 $("cSave").onclick=async()=>{
-  const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;
+  if(closeLocked())return;const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;$("cSave").textContent="저장 중…";
   try{const pl=monthPL(mk,draft);
     allClose[mk]={...(allClose[mk]||{}),manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,closedAt:Date.now(),summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}};
-    saveBrowser();const synced=await saveCloud();dirty=false;renderClose();renderPL();renderHome();toast(synced?`${cCur.m}월 정산을 동기화했습니다`:`${cCur.m}월 정산을 이 기기에 저장했습니다`);
+    saveBrowser();const synced=await saveCloud();dirty=false;closeEditing=false;renderClose(false);renderPL();renderHome();renderDesigners();toast(synced?`${cCur.m}월 정산을 동기화했습니다`:`${cCur.m}월 정산을 이 기기에 저장했습니다`);
   }catch(e){$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);}
-  $("cSave").disabled=false;
+  $("cSave").disabled=closeLocked();$("cSave").textContent="정산 저장";
 };
 
 /* settings: defaults */
@@ -1088,11 +1154,12 @@ $("impManual").addEventListener("submit",async e=>{
 });
 
 /* ---------- boot ---------- */
-renderDefs();route();renderSales();renderPL();renderRefs();renderInventory();
+renderDefs();route();renderSales();renderPL();renderDesigners();renderRefs();renderInventory();
 (async()=>{
   try{await loadCloud();}catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");}
   savedCfg=JSON.parse(ls.get("nudif-import-config")||"null");
-  subscribeMonth();renderHome();renderDefs();renderInventory();if(!$("cLabel").closest("[hidden]")){loadDraft();renderClose();}
+  subscribeMonth();renderHome();renderDefs();renderDesigners();renderInventory();
+  if((location.hash||"#home")==="#close"){closeInitialized=false;renderClose(true);}
   $("syncStatus").textContent="레퍼런스 동기화는 Jotform 연결 후 사용할 수 있습니다.";$("jfState").textContent="아직 확인하지 않음";
 })();
 </script>
