@@ -22,7 +22,7 @@ module.exports = async function handler(req, res) {
   cors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.headers["x-dashboard-key"] !== process.env.DASHBOARD_SYNC_KEY) {
-    return res.status(401).json({ error: "관리 비밀번호가 맞지 않습니다." });
+    return res.status(401).json({ error: "비밀번호가 올바르지 않습니다.", stage: "authentication" });
   }
 
   try {
@@ -39,6 +39,22 @@ module.exports = async function handler(req, res) {
     }
     return res.status(405).json({ error: "지원하지 않는 요청입니다." });
   } catch (error) {
-    return res.status(500).json({ error: "저장소에 연결하지 못했습니다.", detail: error.message });
+    const message = String(error?.message || "");
+    const reason = /auth|authentication|bad auth/i.test(message)
+      ? "database_authentication"
+      : /querySrv|ENOTFOUND|DNS/i.test(message)
+        ? "database_dns"
+        : /timed out|timeout|server selection/i.test(message)
+          ? "database_network"
+          : /MONGODB_URI is not configured/i.test(message)
+            ? "missing_environment"
+            : "database_connection";
+    console.error("STATE_STORAGE_ERROR", JSON.stringify({
+      stage: "storage",
+      reason,
+      name: error?.name || "Error",
+      code: error?.code || null
+    }));
+    return res.status(503).json({ error: "저장소에 연결하지 못했습니다.", stage: "storage", reason });
   }
 };

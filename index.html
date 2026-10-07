@@ -544,6 +544,12 @@ const SYNC_ENDPOINT="https://rho-eight-83.vercel.app/api/state";
 const LOCAL_MIGRATION_KEY="nudif-mongodb-migration-v1";
 let syncKey=ls.get("nudif-sync-key")||"",syncRevision="",cloudConnected=false;
 
+async function syncError(response,fallback){
+  const body=await response.json().catch(()=>({}));
+  const message=response.status===401?"비밀번호가 올바르지 않습니다.":(body.error||fallback);
+  const error=new Error(message);error.status=response.status;error.stage=body.stage||"api";error.reason=body.reason||"";return error;
+}
+
 function stateSnapshot(){return{months:allMonths,close:allClose,cfg,inventory,inventoryDataVersion:INVENTORY_DATA_VERSION,syncRevision};}
 function saveBrowser(){
   const next=JSON.stringify(stateSnapshot()),prev=ls.get("nudif-dashboard-state");
@@ -588,7 +594,7 @@ async function saveCloud(){
   if(!syncKey)return false;
   syncRevision=`${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
   const expected=syncRevision,r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:stateSnapshot()})});
-  if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
+  if(!r.ok)throw await syncError(r,"동기화하지 못했습니다.");
   const check=await fetch(SYNC_ENDPOINT,{headers:{"X-Dashboard-Key":syncKey}});
   if(!check.ok)throw new Error("저장 확인에 실패했습니다.");
   const confirmed=(await check.json()).state;
@@ -608,13 +614,13 @@ async function reconnectCloud(){
     setCurrentToLatestClosed();subscribeMonth();closeInitialized=false;draft=null;dirty=false;renderClose(true);renderHome();renderDesigners();renderInventory();
     showCloudState(true,"모든 기기 동기화 연결됨");toast("공용 저장소에 연결했습니다");return true;
   }catch(e){
-    syncKey="";ls.set("nudif-sync-key","");showCloudState(false,e.message||"동기화 연결 실패");toast("관리 비밀번호를 확인하세요");return false;
+    syncKey="";ls.set("nudif-sync-key","");showCloudState(false,e.message||"동기화 연결 실패");toast(e.status===401?"비밀번호가 올바르지 않습니다.":"저장소 연결을 확인하세요");return false;
   }finally{$("cSync").disabled=false;}
 }
 async function loadCloud(){
   if(!syncKey)return null;
   const r=await fetch(SYNC_ENDPOINT,{cache:"no-store",headers:{"X-Dashboard-Key":syncKey}});
-  if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
+  if(!r.ok)throw await syncError(r,"동기화하지 못했습니다.");
   const state=(await r.json()).state;
   if(state)applyServerState(state);else ensureAugustClose();
   return state||null;
