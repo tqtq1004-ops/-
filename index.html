@@ -541,9 +541,9 @@ function safeUrl(u){try{const x=new URL(u);return /^https?:$/.test(x.protocol)?x
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3500);}
 const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
 const SYNC_ENDPOINT="https://rho-eight-83.vercel.app/api/state";
-let syncKey=ls.get("nudif-sync-key")||"";
+let syncKey=ls.get("nudif-sync-key")||"",syncRevision="",cloudConnected=false;
 
-function stateSnapshot(){return{months:allMonths,close:allClose,cfg,inventory,inventoryDataVersion:INVENTORY_DATA_VERSION};}
+function stateSnapshot(){return{months:allMonths,close:allClose,cfg,inventory,inventoryDataVersion:INVENTORY_DATA_VERSION,syncRevision};}
 function saveBrowser(){
   const next=JSON.stringify(stateSnapshot()),prev=ls.get("nudif-dashboard-state");
   if(prev&&prev!==next)ls.set("nudif-dashboard-state-backup",prev);
@@ -556,9 +556,11 @@ function mergeStoredState(state){
   for(const mk of new Set([...Object.keys(allMonths),...Object.keys(localMonths)]))allMonths[mk]=newerBy(allMonths[mk],localMonths[mk],"updatedAt");
   for(const mk of new Set([...Object.keys(allClose),...Object.keys(localClose)]))allClose[mk]=newerBy(allClose[mk],localClose[mk],"closedAt");
   if(state.cfg)cfg={...cfg,...state.cfg,defaults:{...cfg.defaults,...(state.cfg.defaults||{})}};
+  if(state.syncRevision)syncRevision=state.syncRevision;
   if(Array.isArray(state.inventory)&&(state.inventoryDataVersion||0)>=INVENTORY_DATA_VERSION){
     const byId=new Map(inventory.map(x=>[x.id,x]));state.inventory.forEach(x=>byId.set(x.id,x));inventory=[...byId.values()];
   }
+  ensureAugustClose();
   normalizeInventory();
   return true;
 }
@@ -570,13 +572,20 @@ function loadBrowser(){
   return false;
 }
 function showCloudState(ok,message){
+  cloudConnected=!!ok;
   const el=$("cloudState");if(!el)return;
   el.textContent=message;el.className=ok?"lbl up":"lbl down";
+  if($("cSave")&&!closeLocked())$("cSave").disabled=!cloudConnected;
 }
 async function saveCloud(){
   if(!syncKey)return false;
-  const r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:stateSnapshot()})});
+  syncRevision=`${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
+  const expected=syncRevision,r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:stateSnapshot()})});
   if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
+  const check=await fetch(SYNC_ENDPOINT,{headers:{"X-Dashboard-Key":syncKey}});
+  if(!check.ok)throw new Error("저장 확인에 실패했습니다.");
+  const confirmed=(await check.json()).state;
+  if(confirmed?.syncRevision!==expected)throw new Error("공용 저장소에서 저장 내용을 확인하지 못했습니다.");
   return true;
 }
 async function reconnectCloud(){
@@ -615,16 +624,18 @@ const vendorDirectory=[
 ];
 let inventory=[];
 const INVENTORY_DATA_VERSION=3;
+const AUGUST_CLOSE_MANUAL={
+  rev_total:26672200,"rev:건한":12097600,"rev:근영":10271100,"rev:혜진":4303500,
+  rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000,
+  card_samsung:1709636,card_woori:691170,card_hana:363496,salary:2417500,common:0
+};
+function ensureAugustClose(){
+  const existing=allClose["2026-08"]||{};
+  allClose["2026-08"]={...existing,manual:{...AUGUST_CLOSE_MANUAL,...(existing.manual||{})},extras:existing.extras||[],memo:existing.memo||"",closedAt:existing.closedAt||Date.UTC(2026,7,31,12)};
+}
 let allMonths={},allClose={
   "2026-08":{
-    manual:{
-      rev_total:26672200,
-      "rev:건한":12097600,
-      "rev:근영":10271100,
-      "rev:혜진":4303500,
-      rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000,
-      card_samsung:1709636,card_woori:691170,card_hana:363496,salary:2417500,common:0
-    },
+    manual:{...AUGUST_CLOSE_MANUAL},
     extras:[],
     memo:"",
     closedAt:Date.UTC(2026,7,31,12)
@@ -896,7 +907,7 @@ function renderClose(fromRoute){
   $("cMode").textContent=locked?"저장 완료 · 읽기 전용":saved?.closedAt?"수정 중":"입력 중";
   $("cMode").className=locked?"pill":"pill warn";
   $("cEdit").hidden=!locked;
-  $("cSave").disabled=locked;
+  $("cSave").disabled=locked||!cloudConnected;
   const H=(id,t)=>{const el=$(id);el.innerHTML=`<h3>${t}</h3>`;return el;};
   H("cgRev","매출").insertAdjacentHTML("beforeend",closeRow("rev_total","총 매출","핸드SOS 엑셀 합계")+closeRow("rev:건한","건한 개인매출")+closeRow("rev:근영","근영 개인매출")+closeRow("rev:혜진","혜진 매출")+partnerTotalRow("건한")+partnerTotalRow("근영"));
   H("cgFixed","고정비").insertAdjacentHTML("beforeend",COSTS.filter(c=>c[2]==="fixed").map(c=>closeRow(c[0],c[1],"매달 고정 · 수정 가능")).join(""));
@@ -927,14 +938,15 @@ $("cPrev").onclick=()=>moveClose(-1);$("cNext").onclick=()=>moveClose(1);
 $("cEdit").onclick=()=>{closeEditing=true;dirty=false;renderClose(false);};
 $("cSync").onclick=reconnectCloud;
 $("cSave").onclick=async()=>{
-  if(closeLocked())return;const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;$("cSave").textContent="저장 중…";
+  if(closeLocked())return;
+  if(!cloudConnected){$("cStatus").textContent="먼저 ‘동기화 연결’을 눌러 공용 저장소에 연결하세요.";showCloudState(false,"동기화 연결 후 저장 가능");return;}
+  const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;$("cSave").textContent="저장 확인 중…";
   try{const pl=monthPL(mk,draft);
     allClose[mk]={...(allClose[mk]||{}),manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,closedAt:Date.now(),summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}};
-    saveBrowser();const synced=await saveCloud();dirty=false;closeEditing=false;renderClose(false);renderPL();renderHome();renderDesigners();
-    showCloudState(synced,synced?"모든 기기 동기화 연결됨":"이 기기에만 저장됨 · 연결 필요");
-    toast(synced?`${cCur.m}월 정산을 동기화했습니다`:`${cCur.m}월 정산을 이 기기에 임시 저장했습니다`);
-  }catch(e){$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);}
-  $("cSave").disabled=closeLocked();$("cSave").textContent="정산 저장";
+    saveBrowser();await saveCloud();dirty=false;closeEditing=false;renderClose(false);renderPL();renderHome();renderDesigners();
+    showCloudState(true,"MongoDB 저장 확인 완료");toast(`${cCur.m}월 정산 저장을 확인했습니다`);
+  }catch(e){cloudConnected=false;$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);showCloudState(false,"저장 확인 실패 · 다시 연결 필요");}
+  $("cSave").disabled=closeLocked()||!cloudConnected;$("cSave").textContent="정산 저장";
 };
 
 /* settings: defaults */
