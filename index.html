@@ -549,6 +549,13 @@ function saveBrowser(){
   if(prev&&prev!==next)ls.set("nudif-dashboard-state-backup",prev);
   ls.set("nudif-dashboard-state",next);
 }
+function readBrowserState(){
+  for(const key of["nudif-dashboard-state","nudif-dashboard-state-backup"]){
+    const raw=ls.get(key);if(!raw)continue;
+    try{const state=JSON.parse(raw);if(state&&typeof state==="object")return state;}catch{}
+  }
+  return null;
+}
 function newerBy(a,b,stamp){if(!a)return b;if(!b)return a;return +(a[stamp]||0)>=+(b[stamp]||0)?a:b;}
 function mergeStoredState(state){
   if(!state||typeof state!=="object")return false;
@@ -565,11 +572,28 @@ function mergeStoredState(state){
   return true;
 }
 function loadBrowser(){
-  for(const key of["nudif-dashboard-state","nudif-dashboard-state-backup"]){
-    const raw=ls.get(key);if(!raw)continue;
-    try{if(mergeStoredState(JSON.parse(raw)))return true;}catch{}
+  const state=readBrowserState();return state?mergeStoredState(state):false;
+}
+function applyServerState(state){
+  if(!state||typeof state!=="object")return false;
+  allMonths=state.months&&typeof state.months==="object"?state.months:{};
+  allClose=state.close&&typeof state.close==="object"?state.close:{};
+  cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000},...(state.cfg||{})};
+  cfg.defaults={rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000,...(state.cfg?.defaults||{})};
+  inventory=Array.isArray(state.inventory)?state.inventory:[];
+  syncRevision=state.syncRevision||"";
+  ensureAugustClose();normalizeInventory();return true;
+}
+function mergeNewerBrowserRecords(state){
+  if(!state||typeof state!=="object")return false;
+  let changed=false;
+  for(const [mk,item] of Object.entries(state.months||{})){
+    if(!allMonths[mk]||+(item?.updatedAt||0)>+(allMonths[mk]?.updatedAt||0)){allMonths[mk]=item;changed=true;}
   }
-  return false;
+  for(const [mk,item] of Object.entries(state.close||{})){
+    if(!allClose[mk]||+(item?.closedAt||0)>+(allClose[mk]?.closedAt||0)){allClose[mk]=item;changed=true;}
+  }
+  ensureAugustClose();return changed;
 }
 function showCloudState(ok,message){
   cloudConnected=!!ok;
@@ -593,7 +617,10 @@ async function reconnectCloud(){
   if(!entered)return false;
   syncKey=entered.trim();ls.set("nudif-sync-key",syncKey);$("cSync").disabled=true;showCloudState(false,"연결 확인 중…");
   try{
-    await loadCloud();saveBrowser();await saveCloud();
+    await loadCloud();
+    const local=readBrowserState(),migrated=mergeNewerBrowserRecords(local);
+    if(migrated)await saveCloud();
+    saveBrowser();
     setCurrentToLatestClosed();subscribeMonth();closeInitialized=false;draft=null;dirty=false;renderClose(true);renderHome();renderDesigners();renderInventory();
     showCloudState(true,"모든 기기 동기화 연결됨");toast("공용 저장소에 연결했습니다");return true;
   }catch(e){
@@ -601,13 +628,12 @@ async function reconnectCloud(){
   }finally{$("cSync").disabled=false;}
 }
 async function loadCloud(){
-  if(!syncKey){syncKey=prompt("누디프 대시보드 관리 비밀번호를 입력하세요.")||"";if(syncKey)ls.set("nudif-sync-key",syncKey);}
-  if(!syncKey)return false;
-  const r=await fetch(SYNC_ENDPOINT,{headers:{"X-Dashboard-Key":syncKey}});
+  if(!syncKey)return null;
+  const r=await fetch(SYNC_ENDPOINT,{cache:"no-store",headers:{"X-Dashboard-Key":syncKey}});
   if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
   const state=(await r.json()).state;
-  if(state)mergeStoredState(state);
-  return true;
+  if(state)applyServerState(state);else ensureAugustClose();
+  return state||null;
 }
 
 let db=null,mcp=null,pollT=null;
@@ -704,7 +730,7 @@ function renderInventory(){
   $("iListStatus").textContent=`${invPeriodLabel()} · ${rows.length}개 품목`;
   document.querySelectorAll("[data-idel]").forEach(b=>b.onclick=()=>deleteInventory(b.dataset.idel));
 }
-async function persistInventory(message){saveBrowser();const synced=await saveCloud();renderInventory();toast(synced?`${message} · 모든 기기에 동기화했습니다`:`${message} · 이 기기에 저장했습니다`);}
+async function persistInventory(message){const synced=await saveCloud();saveBrowser();renderInventory();toast(synced?`${message} · 모든 기기에 동기화했습니다`:`${message} · 이 기기에 저장했습니다`);}
 async function deleteInventory(id){if(!confirm("이 제품 내역을 삭제할까요?"))return;inventory=inventory.filter(x=>x.id!==id);try{await persistInventory("제품 내역을 삭제했습니다");}catch(e){toast("저장하지 못했습니다: "+(e.message||""));}}
 function readInventoryFilters(){const start=$("iStart").value,end=$("iEnd").value;if(!start||!end||start>end){toast("시작일과 종료일을 확인하세요.");return false;}iRange={start,end};iVendorFilter=$("iVendorSelect").value;iProductFilter=$("iProductSelect").value;renderInventory();return true;}
 document.querySelectorAll("[data-irange]").forEach(b=>b.onclick=()=>{setInventoryRange(b.dataset.irange);renderInventory();});
@@ -951,7 +977,7 @@ $("cSave").onclick=async()=>{
   const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;$("cSave").textContent="저장 확인 중…";
   try{const pl=monthPL(mk,draft);
     allClose[mk]={...(allClose[mk]||{}),manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,closedAt:Date.now(),summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}};
-    saveBrowser();await saveCloud();dirty=false;closeEditing=false;setCurrentToLatestClosed();subscribeMonth();renderClose(false);renderHome();renderDesigners();
+    await saveCloud();saveBrowser();dirty=false;closeEditing=false;setCurrentToLatestClosed();subscribeMonth();renderClose(false);renderHome();renderDesigners();
     showCloudState(true,"MongoDB 저장 확인 완료");toast(`${cCur.m}월 정산 저장을 확인했습니다`);
   }catch(e){cloudConnected=false;$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);showCloudState(false,"저장 확인 실패 · 다시 연결 필요");}
   $("cSave").disabled=closeLocked()||!cloudConnected;$("cSave").textContent="정산 저장";
@@ -965,7 +991,7 @@ function renderDefs(){
 $("saveDefs").onclick=async()=>{
   const defaults={};COSTS.filter(c=>c[3]).forEach(([k])=>{const v=$("def_"+k).value.replace(/[^\d]/g,"");if(v)defaults[k]=+v;});
   const designers=$("dsNames").value.split(/[,，]/).map(x=>x.trim()).filter(Boolean);
-  try{cfg={...cfg,designers:designers.length?designers:["건한","근영","혜진"],salaryLabel:$("salaryLabel").value.trim()||"월급",defaults};saveBrowser();await saveCloud();$("defStatus").textContent="저장했습니다. 매달 자동으로 채워집니다.";}
+  try{cfg={...cfg,designers:designers.length?designers:["건한","근영","혜진"],salaryLabel:$("salaryLabel").value.trim()||"월급",defaults};await saveCloud();saveBrowser();$("defStatus").textContent="저장했습니다. 매달 자동으로 채워집니다.";}
   catch(e){$("defStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);}
 };
 $("prevM").onclick=()=>{cur=shift(cur.y,cur.m,-1);monthData={};prevMonthData={};subscribeMonth();};
@@ -983,7 +1009,7 @@ async function writeDays(byMonth,mode){
       if(inc.people)for(const n in inc.people){const names=new Set(people[n]||[]);inc.people[n].forEach(name=>names.add(name));people[n]=[...names];}}
     allMonths[mk]={days,people,updatedAt:Date.now()};
   }
-  saveBrowser();await saveCloud();
+  await saveCloud();saveBrowser();
 }
 
 /* ---------- home ---------- */
@@ -1219,11 +1245,20 @@ $("impManual").addEventListener("submit",async e=>{
 });
 
 /* ---------- boot ---------- */
-const recoveredBrowserState=loadBrowser();
+const recoveredBrowserState=readBrowserState();
 setCurrentToLatestClosed();
 renderDefs();route();renderSales();renderPL();renderDesigners();renderRefs();renderInventory();
 (async()=>{
-  try{const cloudLoaded=await loadCloud();if(cloudLoaded&&recoveredBrowserState){saveBrowser();await saveCloud();}showCloudState(cloudLoaded,cloudLoaded?"모든 기기 동기화 연결됨":"이 기기에만 저장됨 · 연결 필요");}
+  try{
+    let migrated=false;
+    if(syncKey){
+      await loadCloud();
+      if(recoveredBrowserState)migrated=mergeNewerBrowserRecords(recoveredBrowserState);
+      if(migrated)await saveCloud();
+      saveBrowser();
+    }
+    showCloudState(!!syncKey,syncKey?(migrated?"휴대폰 데이터를 MongoDB로 이전 완료":"MongoDB 저장 연결됨"):"서버 데이터를 보려면 동기화 연결 필요");
+  }
   catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");showCloudState(false,"동기화 연결 필요");}
   savedCfg=JSON.parse(ls.get("nudif-import-config")||"null");
   setCurrentToLatestClosed();subscribeMonth();renderHome();renderDefs();renderDesigners();renderInventory();
