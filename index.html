@@ -40,6 +40,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15p
 button,select,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:8px 14px;min-height:40px}
 button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+button.danger{background:var(--alert);border-color:var(--alert);color:#fff;font-weight:600}
 button{transition:transform .12s ease,background-color .16s ease,border-color .16s ease,opacity .16s ease}
 button:active{transform:scale(.98)}
 button.ghost{background:none;border-color:transparent}
@@ -211,6 +212,10 @@ tr.dim td{opacity:.45}
 .xrow{display:grid;grid-template-columns:minmax(0,1fr) 130px minmax(0,1.3fr) 40px;gap:8px;align-items:center;padding:6px 0}
 .sumbar{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px;box-shadow:0 8px 28px rgba(0,0,0,.12);z-index:5}
 .sumbar .v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.confirm-dialog{width:min(440px,calc(100% - 32px));border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.25)}
+.confirm-dialog::backdrop{background:rgba(0,0,0,.55)}
+.confirm-dialog p{white-space:pre-line;color:var(--muted)}
+.confirm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 .warnline{font-size:.82rem;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:6px 10px}
 @media (max-width:760px){
   .inv-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -359,7 +364,7 @@ tr.dim td{opacity:.45}
       <div><h1>월 정산 입력</h1><p>입력하는 즉시 현재 기준 정산 결과가 계산됩니다.</p></div>
       <div class="monthnav"><button id="cPrev" aria-label="이전 달">‹</button><span class="m" id="cLabel">—</span><button id="cNext" aria-label="다음 달">›</button></div>
     </div>
-    <div class="close-state"><span class="pill" id="cMode">입력 중</span><button id="cEdit" type="button" hidden>수정</button><span class="lbl" id="cloudState">동기화 확인 중</span><button id="cSync" type="button">동기화 연결</button></div>
+    <div class="close-state"><span class="pill" id="cMode">입력 중</span><button id="cEdit" type="button" hidden>수정</button><button id="cCancel" type="button" hidden>정산 취소</button><span class="lbl" id="cloudState">동기화 확인 중</span><button id="cSync" type="button">동기화 연결</button></div>
     <div class="legend" style="flex-wrap:wrap"><span><span class="src pos">POS</span> 핸드SOS 엑셀</span><span><span class="src gmail">Gmail</span> 카드 명세서 자동</span><span><span class="src default">기본값</span> 매달 고정</span><span><span class="src manual">직접 입력</span> 덮어씀</span><span><span class="src none">미입력</span></span></div>
     <div class="card"><div class="cgroup" id="cgRev"><h3>매출</h3></div><div id="revWarn"></div></div>
     <div class="card"><div class="cgroup" id="cgFixed"><h3>고정비</h3></div></div>
@@ -374,9 +379,14 @@ tr.dim td{opacity:.45}
       <div><div class="lbl">총 매출</div><div class="v" id="sRev">₩0</div></div>
       <div><div class="lbl">총 비용</div><div class="v" id="sCost">₩0</div></div>
       <div><div class="lbl">건한 · 근영 순수익</div><div class="v" id="sProfit">—</div></div>
-      <button class="primary" id="cSave">정산 저장</button>
+      <button class="primary" id="cSave">정산 완료</button>
     </div>
     <div class="status" id="cStatus"></div>
+    <dialog class="confirm-dialog" id="cancelDialog">
+      <h2>정산 취소</h2>
+      <p id="cancelMessage"></p>
+      <div class="confirm-actions"><button id="cancelBack" type="button">돌아가기</button><button class="danger" id="cancelConfirm" type="button">정산 취소</button></div>
+    </dialog>
   </section>
 
   <!-- RESERVATIONS -->
@@ -580,7 +590,7 @@ function mergeNewerBrowserRecords(state){
     if(!allMonths[mk]||+(item?.updatedAt||0)>+(allMonths[mk]?.updatedAt||0)){allMonths[mk]=item;changed=true;}
   }
   for(const [mk,item] of Object.entries(state.close||{})){
-    if(!allClose[mk]||+(item?.closedAt||0)>+(allClose[mk]?.closedAt||0)){allClose[mk]=item;changed=true;}
+    if(!allClose[mk]||+(item?.updatedAt||item?.closedAt||0)>+(allClose[mk]?.updatedAt||allClose[mk]?.closedAt||0)){allClose[mk]=item;changed=true;}
   }
   ensureAugustClose();return changed;
 }
@@ -846,12 +856,12 @@ function renderPL(){
   $("pProfitS").innerHTML=partnerBreakdown(pl.partnerGross.건한,pl.cost/2,pl.partners.건한);
   $("pMargin").textContent=won(pl.partners.근영);$("pMargin").className="v "+(pl.partners.근영>=0?"profit-pos":"profit-neg");
   $("pMarginS").innerHTML=partnerBreakdown(pl.partnerGross.근영,pl.cost/2,pl.partners.근영);
-  $("pState").innerHTML=c&&c.closedAt?`<span class="pill">정산 완료</span>`:`<span class="pill warn">정산 전</span>`;
+  $("pState").innerHTML=isCloseCompleted(c)?`<span class="pill">정산 완료</span>`:`<span class="pill warn">정산 전</span>`;
   const ds=pl.designers.filter(x=>x[1]),dsum=ds.reduce((s,x)=>s+x[1],0);
   $("dsBars").innerHTML=ds.length?barList(ds.sort((a,b)=>b[1]-a[1]),dsum,"var(--accent)"):`<div class="empty">핸드SOS 엑셀에서 ‘담당 디자이너’ 열을 지정하거나 월 정산에서 직접 입력하세요</div>`;
   $("dsNote").textContent=dsum?`합계 ${won(dsum)}`:"";
   const prevKey=previousClosedKey(mk),prevPL=monthPL(prevKey||"");
-  $("designerCompare").innerHTML=["건한","근영","혜진"].map(name=>designerComparison(name,pl,prevPL,!!allClose[prevKey]?.closedAt)).join("");
+  $("designerCompare").innerHTML=["건한","근영","혜진"].map(name=>designerComparison(name,pl,prevPL,isCloseCompleted(allClose[prevKey]))).join("");
   const it=pl.items.filter(x=>x[1]).sort((a,b)=>b[1]-a[1]);
   $("costBars").innerHTML=it.length?barList(it,pl.cost,"var(--muted)"):`<div class="empty">월 정산에서 비용을 입력하면 표시됩니다</div>`;
   $("costNote").textContent=pl.cost?`합계 ${won(pl.cost)}`:"";
@@ -879,7 +889,8 @@ function renderTrend(){
   $("trend").innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="월별 매출, 공동비용, 디자이너별 순수익">${g}</svg>`;
 }
 
-function savedCloseKeys(){return Object.keys(allClose).filter(k=>allClose[k]?.closedAt).sort();}
+function isCloseCompleted(item){return item?.status==="completed"||(item?.status==null&&!!item?.closedAt);}
+function savedCloseKeys(){return Object.keys(allClose).filter(k=>isCloseCompleted(allClose[k])).sort();}
 function previousClosedKey(mk){return savedCloseKeys().filter(k=>k<mk).at(-1)||"";}
 function setCurrentToLatestClosed(){
   const latest=latestClosedKey();if(!latest)return"";
@@ -908,8 +919,8 @@ function renderDesigners(){
 /* close form */
 let cCur={...cur},draft=null,dirty=false,closeEditing=true,closeInitialized=false;
 function latestClosedKey(){return savedCloseKeys().at(-1)||"";}
-function loadDraft(editState){const c=allClose[mKey(cCur.y,cCur.m)]||{};draft={manual:{...(c.manual||{})},extras:(c.extras||[]).map(x=>({...x})),memo:c.memo||""};dirty=false;closeEditing=editState??!c.closedAt;}
-function closeLocked(){return !!allClose[mKey(cCur.y,cCur.m)]?.closedAt&&!closeEditing;}
+function loadDraft(editState){const c=allClose[mKey(cCur.y,cCur.m)]||{};draft={manual:{...(c.manual||{})},extras:(c.extras||[]).map(x=>({...x})),memo:c.memo||""};dirty=false;closeEditing=editState??!isCloseCompleted(c);}
+function closeLocked(){return isCloseCompleted(allClose[mKey(cCur.y,cCur.m)])&&!closeEditing;}
 function closeRow(key,label,hint){
   const mk=mKey(cCur.y,cCur.m),f=fieldVal(mk,key,draft),ov=f.src==="manual";
   const autoF=fieldVal(mk,key,{manual:{}});
@@ -926,11 +937,12 @@ function partnerTotalRow(name){
 function renderClose(fromRoute){
   if(fromRoute){const latest=latestClosedKey();if(latest&&!dirty){const [y,m]=latest.split("-").map(Number);cCur={y,m};}closeInitialized=true;}
   if(!draft||(fromRoute&&!dirty))loadDraft();
-  const locked=closeLocked(),saved=allClose[mKey(cCur.y,cCur.m)];
+  const locked=closeLocked(),saved=allClose[mKey(cCur.y,cCur.m)],completed=isCloseCompleted(saved);
   $("cLabel").textContent=`${cCur.y}.${pad(cCur.m)}`;
-  $("cMode").textContent=locked?"저장 완료 · 읽기 전용":saved?.closedAt?"수정 중":"입력 중";
+  $("cMode").textContent=locked?"정산 완료 · 읽기 전용":completed?"수정 중":"작성 중";
   $("cMode").className=locked?"pill":"pill warn";
   $("cEdit").hidden=!locked;
+  $("cCancel").hidden=!locked;
   $("cSave").disabled=locked||!cloudConnected;
   const H=(id,t)=>{const el=$(id);el.innerHTML=`<h3>${t}</h3>`;return el;};
   H("cgRev","매출").insertAdjacentHTML("beforeend",closeRow("rev_total","총 매출","핸드SOS 엑셀 합계")+closeRow("rev:건한","건한 개인매출")+closeRow("rev:근영","근영 개인매출")+closeRow("rev:혜진","혜진 매출")+partnerTotalRow("건한")+partnerTotalRow("근영"));
@@ -945,7 +957,7 @@ function renderClose(fromRoute){
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>{const inp=b.parentElement.querySelector("input");inp.readOnly=false;inp.focus();b.textContent="수정 중";});
   document.querySelectorAll("[data-x]").forEach(inp=>inp.oninput=()=>{const x=draft.extras[+inp.dataset.x];x[inp.dataset.f]=inp.dataset.f==="amount"?+(inp.value.replace(/[^\d]/g,""))||0:inp.value;dirty=true;updateSum();});
   document.querySelectorAll("[data-xdel]").forEach(b=>b.onclick=()=>{draft.extras.splice(+b.dataset.xdel,1);dirty=true;renderClose();});
-  $("cStatus").textContent=dirty?"저장하지 않은 변경 사항이 있습니다.":saved&&saved.closedAt?`${new Date(saved.closedAt).toLocaleString("ko-KR")}에 저장됨 · 수정 버튼을 누르면 변경할 수 있습니다.`:"아직 저장하지 않은 달입니다.";
+  $("cStatus").textContent=dirty?"저장하지 않은 변경 사항이 있습니다.":completed?`${new Date(saved.closedAt).toLocaleString("ko-KR")}에 정산 완료 · 수정 버튼을 누르면 변경할 수 있습니다.`:saved?"입력 데이터가 보존된 작성 중 정산입니다.":"아직 작성하지 않은 달입니다.";
   updateSum();
 }
 function updateSum(){
@@ -961,16 +973,35 @@ function moveClose(d){if(dirty&&!moveClose.ok){$("cStatus").textContent="저장�
 $("cPrev").onclick=()=>moveClose(-1);$("cNext").onclick=()=>moveClose(1);
 $("cEdit").onclick=()=>{closeEditing=true;dirty=false;renderClose(false);};
 $("cSync").onclick=reconnectCloud;
+const closeMonthLabel=mk=>{const [y,m]=mk.split("-").map(Number);return `${y}년 ${m}월`;};
+$("cCancel").onclick=()=>{
+  const mk=mKey(cCur.y,cCur.m),previous=previousClosedKey(mk);
+  $("cancelMessage").textContent=`${closeMonthLabel(mk)} 정산을 취소할까요?\n\n정산 완료 상태가 해제되며,\n최신 정산 기준은 ${previous?closeMonthLabel(previous):"완료된 이전 월 없음"}${previous?"로 돌아갑니다.":"이 됩니다."}\n\n입력한 ${cCur.m}월 데이터는 삭제되지 않습니다.`;
+  $("cancelDialog").showModal();
+};
+$("cancelBack").onclick=()=>$("cancelDialog").close();
+$("cancelConfirm").onclick=async()=>{
+  if(!cloudConnected){$("cancelDialog").close();showCloudState(false,"동기화 연결 후 취소 가능");$("cStatus").textContent="먼저 ‘동기화 연결’을 눌러 공용 저장소에 연결하세요.";return;}
+  const mk=mKey(cCur.y,cCur.m),previous={...(allClose[mk]||{})};
+  if(!isCloseCompleted(previous)){$("cancelDialog").close();return;}
+  $("cancelConfirm").disabled=true;$("cancelConfirm").textContent="취소 처리 중…";
+  allClose[mk]={...previous,status:"draft",updatedAt:Date.now()};
+  try{
+    await saveCloud();saveBrowser();dirty=false;closeEditing=true;setCurrentToLatestClosed();subscribeMonth();renderClose(false);renderHome();renderDesigners();
+    $("cancelDialog").close();showCloudState(true,"MongoDB 저장 확인 완료");toast(`${cCur.m}월 정산 완료 상태를 취소했습니다`);
+  }catch(e){allClose[mk]=previous;cloudConnected=false;$("cStatus").textContent="정산 취소를 저장하지 못했습니다: "+(e.message||e.code);showCloudState(false,"저장 확인 실패 · 다시 연결 필요");}
+  $("cancelConfirm").disabled=false;$("cancelConfirm").textContent="정산 취소";
+};
 $("cSave").onclick=async()=>{
   if(closeLocked())return;
   if(!cloudConnected){$("cStatus").textContent="먼저 ‘동기화 연결’을 눌러 공용 저장소에 연결하세요.";showCloudState(false,"동기화 연결 후 저장 가능");return;}
-  const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;$("cSave").textContent="저장 확인 중…";
+  const mk=mKey(cCur.y,cCur.m),previous=allClose[mk]?{...allClose[mk]}:null;$("cSave").disabled=true;$("cSave").textContent="완료 처리 중…";
   try{const pl=monthPL(mk,draft);
-    allClose[mk]={...(allClose[mk]||{}),manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,closedAt:Date.now(),summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}};
+    const now=Date.now();allClose[mk]={...(allClose[mk]||{}),manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,status:"completed",closedAt:now,updatedAt:now,summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}};
     await saveCloud();saveBrowser();dirty=false;closeEditing=false;setCurrentToLatestClosed();subscribeMonth();renderClose(false);renderHome();renderDesigners();
-    showCloudState(true,"MongoDB 저장 확인 완료");toast(`${cCur.m}월 정산 저장을 확인했습니다`);
-  }catch(e){cloudConnected=false;$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);showCloudState(false,"저장 확인 실패 · 다시 연결 필요");}
-  $("cSave").disabled=closeLocked()||!cloudConnected;$("cSave").textContent="정산 저장";
+    showCloudState(true,"MongoDB 저장 확인 완료");toast(`${cCur.m}월 정산을 완료했습니다`);
+  }catch(e){if(previous)allClose[mk]=previous;else delete allClose[mk];cloudConnected=false;$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);showCloudState(false,"저장 확인 실패 · 다시 연결 필요");}
+  $("cSave").disabled=closeLocked()||!cloudConnected;$("cSave").textContent="정산 완료";
 };
 
 /* settings: defaults */
@@ -1010,8 +1041,8 @@ function renderHome(){
   $("hSales").textContent=won(pl.rev||s.total);$("hSalesS").textContent=`${hy}년 ${hm}월 · 결제액 기준`;
   $("hToday").textContent=`건한 ${won(pl.partners.건한)}`;$("hToday").className="t-v "+(pl.partners.건한>=0?"profit-pos":"profit-neg");$("hTodayS").textContent=`근영 ${won(pl.partners.근영)}`;
   const pc=allClose[homeKey];
-  $("hClose").textContent=pc&&pc.closedAt?`${hm}월 정산 완료`:`${hm}월 정산 필요`;
-  document.querySelectorAll('[data-b="close"]').forEach(b=>b.hidden=!!(pc&&pc.closedAt));
+  $("hClose").textContent=isCloseCompleted(pc)?`${hm}월 정산 완료`:`${hm}월 정산 필요`;
+  document.querySelectorAll('[data-b="close"]').forEach(b=>b.hidden=isCloseCompleted(pc));
   $("hImportS").textContent=thisMonthData.updatedAt?`마지막 반영 ${new Date(thisMonthData.updatedAt).toLocaleDateString("ko-KR",{month:"short",day:"numeric"})}`:"열 지정 후 한 번에 반영";
   const tdy=refs.filter(r=>visitISO(r)===todayISO());$("hResv").textContent=`${tdy.length}명`;
   const up=upcoming();$("hResvS").textContent=up.length?`오늘 방문 예정 · 앞으로 ${up.length}명`:"오늘 방문 예정";
