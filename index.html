@@ -541,6 +541,7 @@ function safeUrl(u){try{const x=new URL(u);return /^https?:$/.test(x.protocol)?x
 function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3500);}
 const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v){try{localStorage.setItem(k,v)}catch{}}};
 const SYNC_ENDPOINT="https://rho-eight-83.vercel.app/api/state";
+const LOCAL_MIGRATION_KEY="nudif-mongodb-migration-v1";
 let syncKey=ls.get("nudif-sync-key")||"",syncRevision="",cloudConnected=false;
 
 function stateSnapshot(){return{months:allMonths,close:allClose,cfg,inventory,inventoryDataVersion:INVENTORY_DATA_VERSION,syncRevision};}
@@ -555,24 +556,6 @@ function readBrowserState(){
     try{const state=JSON.parse(raw);if(state&&typeof state==="object")return state;}catch{}
   }
   return null;
-}
-function newerBy(a,b,stamp){if(!a)return b;if(!b)return a;return +(a[stamp]||0)>=+(b[stamp]||0)?a:b;}
-function mergeStoredState(state){
-  if(!state||typeof state!=="object")return false;
-  const localMonths=state.months||{},localClose=state.close||{};
-  for(const mk of new Set([...Object.keys(allMonths),...Object.keys(localMonths)]))allMonths[mk]=newerBy(allMonths[mk],localMonths[mk],"updatedAt");
-  for(const mk of new Set([...Object.keys(allClose),...Object.keys(localClose)]))allClose[mk]=newerBy(allClose[mk],localClose[mk],"closedAt");
-  if(state.cfg)cfg={...cfg,...state.cfg,defaults:{...cfg.defaults,...(state.cfg.defaults||{})}};
-  if(state.syncRevision)syncRevision=state.syncRevision;
-  if(Array.isArray(state.inventory)&&(state.inventoryDataVersion||0)>=INVENTORY_DATA_VERSION){
-    const byId=new Map(inventory.map(x=>[x.id,x]));state.inventory.forEach(x=>byId.set(x.id,x));inventory=[...byId.values()];
-  }
-  ensureAugustClose();
-  normalizeInventory();
-  return true;
-}
-function loadBrowser(){
-  const state=readBrowserState();return state?mergeStoredState(state):false;
 }
 function applyServerState(state){
   if(!state||typeof state!=="object")return false;
@@ -618,8 +601,9 @@ async function reconnectCloud(){
   syncKey=entered.trim();ls.set("nudif-sync-key",syncKey);$("cSync").disabled=true;showCloudState(false,"연결 확인 중…");
   try{
     await loadCloud();
-    const local=readBrowserState(),migrated=mergeNewerBrowserRecords(local);
+    const local=readBrowserState(),migrated=ls.get(LOCAL_MIGRATION_KEY)==="done"?false:mergeNewerBrowserRecords(local);
     if(migrated)await saveCloud();
+    ls.set(LOCAL_MIGRATION_KEY,"done");
     saveBrowser();
     setCurrentToLatestClosed();subscribeMonth();closeInitialized=false;draft=null;dirty=false;renderClose(true);renderHome();renderDesigners();renderInventory();
     showCloudState(true,"모든 기기 동기화 연결됨");toast("공용 저장소에 연결했습니다");return true;
@@ -1253,8 +1237,9 @@ renderDefs();route();renderSales();renderPL();renderDesigners();renderRefs();ren
     let migrated=false;
     if(syncKey){
       await loadCloud();
-      if(recoveredBrowserState)migrated=mergeNewerBrowserRecords(recoveredBrowserState);
+      if(recoveredBrowserState&&ls.get(LOCAL_MIGRATION_KEY)!=="done")migrated=mergeNewerBrowserRecords(recoveredBrowserState);
       if(migrated)await saveCloud();
+      ls.set(LOCAL_MIGRATION_KEY,"done");
       saveBrowser();
     }
     showCloudState(!!syncKey,syncKey?(migrated?"휴대폰 데이터를 MongoDB로 이전 완료":"MongoDB 저장 연결됨"):"서버 데이터를 보려면 동기화 연결 필요");
