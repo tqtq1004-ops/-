@@ -543,10 +543,35 @@ const ls={get(k){try{return localStorage.getItem(k)}catch{return null}},set(k,v)
 const SYNC_ENDPOINT="https://rho-eight-83.vercel.app/api/state";
 let syncKey=ls.get("nudif-sync-key")||"";
 
-function saveBrowser(){ls.set("nudif-dashboard-state",JSON.stringify({months:allMonths,close:allClose,cfg,inventory,inventoryDataVersion:INVENTORY_DATA_VERSION}));}
+function stateSnapshot(){return{months:allMonths,close:allClose,cfg,inventory,inventoryDataVersion:INVENTORY_DATA_VERSION};}
+function saveBrowser(){
+  const next=JSON.stringify(stateSnapshot()),prev=ls.get("nudif-dashboard-state");
+  if(prev&&prev!==next)ls.set("nudif-dashboard-state-backup",prev);
+  ls.set("nudif-dashboard-state",next);
+}
+function newerBy(a,b,stamp){if(!a)return b;if(!b)return a;return +(a[stamp]||0)>=+(b[stamp]||0)?a:b;}
+function mergeStoredState(state){
+  if(!state||typeof state!=="object")return false;
+  const localMonths=state.months||{},localClose=state.close||{};
+  for(const mk of new Set([...Object.keys(allMonths),...Object.keys(localMonths)]))allMonths[mk]=newerBy(allMonths[mk],localMonths[mk],"updatedAt");
+  for(const mk of new Set([...Object.keys(allClose),...Object.keys(localClose)]))allClose[mk]=newerBy(allClose[mk],localClose[mk],"closedAt");
+  if(state.cfg)cfg={...cfg,...state.cfg,defaults:{...cfg.defaults,...(state.cfg.defaults||{})}};
+  if(Array.isArray(state.inventory)&&(state.inventoryDataVersion||0)>=INVENTORY_DATA_VERSION){
+    const byId=new Map(inventory.map(x=>[x.id,x]));state.inventory.forEach(x=>byId.set(x.id,x));inventory=[...byId.values()];
+  }
+  normalizeInventory();
+  return true;
+}
+function loadBrowser(){
+  for(const key of["nudif-dashboard-state","nudif-dashboard-state-backup"]){
+    const raw=ls.get(key);if(!raw)continue;
+    try{if(mergeStoredState(JSON.parse(raw)))return true;}catch{}
+  }
+  return false;
+}
 async function saveCloud(){
   if(!syncKey)return false;
-  const r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:{months:allMonths,close:allClose,cfg,inventory,inventoryDataVersion:INVENTORY_DATA_VERSION}})});
+  const r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:stateSnapshot()})});
   if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
   return true;
 }
@@ -556,7 +581,7 @@ async function loadCloud(){
   const r=await fetch(SYNC_ENDPOINT,{headers:{"X-Dashboard-Key":syncKey}});
   if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
   const state=(await r.json()).state;
-  if(state){allMonths=state.months||{};allClose=state.close||allClose;if(state.inventory)inventory=(state.inventoryDataVersion||0)<INVENTORY_DATA_VERSION?[]:state.inventory;normalizeInventory();cfg={...cfg,...(state.cfg||{}),defaults:{...cfg.defaults,...(state.cfg?.defaults||{})}};}
+  if(state)mergeStoredState(state);
   return true;
 }
 
@@ -1154,9 +1179,10 @@ $("impManual").addEventListener("submit",async e=>{
 });
 
 /* ---------- boot ---------- */
+const recoveredBrowserState=loadBrowser();
 renderDefs();route();renderSales();renderPL();renderDesigners();renderRefs();renderInventory();
 (async()=>{
-  try{await loadCloud();}catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");}
+  try{const cloudLoaded=await loadCloud();if(cloudLoaded&&recoveredBrowserState){saveBrowser();await saveCloud();}}catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");}
   savedCfg=JSON.parse(ls.get("nudif-import-config")||"null");
   subscribeMonth();renderHome();renderDefs();renderDesigners();renderInventory();
   if((location.hash||"#home")==="#close"){closeInitialized=false;renderClose(true);}
