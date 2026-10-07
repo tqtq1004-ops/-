@@ -359,7 +359,7 @@ tr.dim td{opacity:.45}
       <div><h1>월 정산 입력</h1><p>입력하는 즉시 현재 기준 정산 결과가 계산됩니다.</p></div>
       <div class="monthnav"><button id="cPrev" aria-label="이전 달">‹</button><span class="m" id="cLabel">—</span><button id="cNext" aria-label="다음 달">›</button></div>
     </div>
-    <div class="close-state"><span class="pill" id="cMode">입력 중</span><button id="cEdit" type="button" hidden>수정</button></div>
+    <div class="close-state"><span class="pill" id="cMode">입력 중</span><button id="cEdit" type="button" hidden>수정</button><span class="lbl" id="cloudState">동기화 확인 중</span><button id="cSync" type="button">동기화 연결</button></div>
     <div class="legend" style="flex-wrap:wrap"><span><span class="src pos">POS</span> 핸드SOS 엑셀</span><span><span class="src gmail">Gmail</span> 카드 명세서 자동</span><span><span class="src default">기본값</span> 매달 고정</span><span><span class="src manual">직접 입력</span> 덮어씀</span><span><span class="src none">미입력</span></span></div>
     <div class="card"><div class="cgroup" id="cgRev"><h3>매출</h3></div><div id="revWarn"></div></div>
     <div class="card"><div class="cgroup" id="cgFixed"><h3>고정비</h3></div></div>
@@ -569,11 +569,27 @@ function loadBrowser(){
   }
   return false;
 }
+function showCloudState(ok,message){
+  const el=$("cloudState");if(!el)return;
+  el.textContent=message;el.className=ok?"lbl up":"lbl down";
+}
 async function saveCloud(){
   if(!syncKey)return false;
   const r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:stateSnapshot()})});
   if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"동기화하지 못했습니다.");
   return true;
+}
+async function reconnectCloud(){
+  const entered=prompt("Vercel에 설정한 DASHBOARD_SYNC_KEY 값을 입력하세요.");
+  if(!entered)return false;
+  syncKey=entered.trim();ls.set("nudif-sync-key",syncKey);$("cSync").disabled=true;showCloudState(false,"연결 확인 중…");
+  try{
+    await loadCloud();saveBrowser();await saveCloud();
+    closeInitialized=false;draft=null;dirty=false;renderClose(true);renderPL();renderHome();renderDesigners();renderInventory();
+    showCloudState(true,"모든 기기 동기화 연결됨");toast("공용 저장소에 연결했습니다");return true;
+  }catch(e){
+    syncKey="";ls.set("nudif-sync-key","");showCloudState(false,e.message||"동기화 연결 실패");toast("관리 비밀번호를 확인하세요");return false;
+  }finally{$("cSync").disabled=false;}
 }
 async function loadCloud(){
   if(!syncKey){syncKey=prompt("누디프 대시보드 관리 비밀번호를 입력하세요.")||"";if(syncKey)ls.set("nudif-sync-key",syncKey);}
@@ -909,11 +925,14 @@ $("cMemo").oninput=()=>{draft.memo=$("cMemo").value;dirty=true;};
 function moveClose(d){if(dirty&&!moveClose.ok){$("cStatus").textContent="저장하지 않은 변경 사항이 있습니다. 한 번 더 누르면 버리고 이동합니다.";moveClose.ok=true;return;}moveClose.ok=false;cCur=shift(cCur.y,cCur.m,d);loadDraft();renderClose();}
 $("cPrev").onclick=()=>moveClose(-1);$("cNext").onclick=()=>moveClose(1);
 $("cEdit").onclick=()=>{closeEditing=true;dirty=false;renderClose(false);};
+$("cSync").onclick=reconnectCloud;
 $("cSave").onclick=async()=>{
   if(closeLocked())return;const mk=mKey(cCur.y,cCur.m);$("cSave").disabled=true;$("cSave").textContent="저장 중…";
   try{const pl=monthPL(mk,draft);
     allClose[mk]={...(allClose[mk]||{}),manual:draft.manual,extras:draft.extras.filter(x=>x.label||+x.amount),memo:draft.memo,closedAt:Date.now(),summary:{rev:pl.rev,cost:pl.cost,profit:pl.profit}};
-    saveBrowser();const synced=await saveCloud();dirty=false;closeEditing=false;renderClose(false);renderPL();renderHome();renderDesigners();toast(synced?`${cCur.m}월 정산을 동기화했습니다`:`${cCur.m}월 정산을 이 기기에 저장했습니다`);
+    saveBrowser();const synced=await saveCloud();dirty=false;closeEditing=false;renderClose(false);renderPL();renderHome();renderDesigners();
+    showCloudState(synced,synced?"모든 기기 동기화 연결됨":"이 기기에만 저장됨 · 연결 필요");
+    toast(synced?`${cCur.m}월 정산을 동기화했습니다`:`${cCur.m}월 정산을 이 기기에 임시 저장했습니다`);
   }catch(e){$("cStatus").textContent="저장하지 못했습니다: "+(e.message||e.code);}
   $("cSave").disabled=closeLocked();$("cSave").textContent="정산 저장";
 };
@@ -1182,7 +1201,8 @@ $("impManual").addEventListener("submit",async e=>{
 const recoveredBrowserState=loadBrowser();
 renderDefs();route();renderSales();renderPL();renderDesigners();renderRefs();renderInventory();
 (async()=>{
-  try{const cloudLoaded=await loadCloud();if(cloudLoaded&&recoveredBrowserState){saveBrowser();await saveCloud();}}catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");}
+  try{const cloudLoaded=await loadCloud();if(cloudLoaded&&recoveredBrowserState){saveBrowser();await saveCloud();}showCloudState(cloudLoaded,cloudLoaded?"모든 기기 동기화 연결됨":"이 기기에만 저장됨 · 연결 필요");}
+  catch(e){$("dbStatus").textContent="동기화하지 못했습니다: "+(e.message||"");showCloudState(false,"동기화 연결 필요");}
   savedCfg=JSON.parse(ls.get("nudif-import-config")||"null");
   subscribeMonth();renderHome();renderDefs();renderDesigners();renderInventory();
   if((location.hash||"#home")==="#close"){closeInitialized=false;renderClose(true);}
