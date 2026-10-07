@@ -18,9 +18,28 @@ function cors(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET, PUT, OPTIONS");
 }
 
+function classifyStorageError(error) {
+  const message = String(error?.message || "");
+  if (/auth|authentication|bad auth/i.test(message)) return "database_authentication";
+  if (/querySrv|ENOTFOUND|DNS/i.test(message)) return "database_dns";
+  if (/timed out|timeout|server selection/i.test(message)) return "database_network";
+  if (/MONGODB_URI is not configured/i.test(message)) return "missing_environment";
+  return "database_connection";
+}
+
 module.exports = async function handler(req, res) {
   cors(req, res);
   if (req.method === "OPTIONS") return res.status(204).end();
+  // Temporary read-only connection probe. It never reads or writes dashboard data.
+  if (req.method === "GET" && req.query?.health === "connection") {
+    try {
+      const col = await collection();
+      await col.findOne({ _id: "__connection_probe__" }, { projection: { _id: 1 } });
+      return res.status(200).json({ ok: true });
+    } catch (error) {
+      return res.status(503).json({ ok: false, reason: classifyStorageError(error), code: error?.code || null });
+    }
+  }
   if (req.headers["x-dashboard-key"] !== process.env.DASHBOARD_SYNC_KEY) {
     return res.status(401).json({ error: "비밀번호가 올바르지 않습니다.", stage: "authentication" });
   }
@@ -39,16 +58,7 @@ module.exports = async function handler(req, res) {
     }
     return res.status(405).json({ error: "지원하지 않는 요청입니다." });
   } catch (error) {
-    const message = String(error?.message || "");
-    const reason = /auth|authentication|bad auth/i.test(message)
-      ? "database_authentication"
-      : /querySrv|ENOTFOUND|DNS/i.test(message)
-        ? "database_dns"
-        : /timed out|timeout|server selection/i.test(message)
-          ? "database_network"
-          : /MONGODB_URI is not configured/i.test(message)
-            ? "missing_environment"
-            : "database_connection";
+    const reason = classifyStorageError(error);
     console.error("STATE_STORAGE_ERROR", JSON.stringify({
       stage: "storage",
       reason,
