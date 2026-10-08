@@ -483,6 +483,7 @@ tr.dim td{opacity:.45}
     <div class="card">
       <div class="setrow"><div><h3>화면 모드</h3><div class="lbl">이 기기에만 저장됩니다</div></div>
         <div class="segs" id="themeSeg"><button data-t="light" aria-pressed="false">라이트</button><button data-t="dark" aria-pressed="false">다크</button><button data-t="system" aria-pressed="true">시스템</button></div></div>
+      <div class="setrow"><div><h3>서버 데이터 백업</h3><div class="lbl">정산 정보가 포함된 파일입니다. 안전한 개인 폴더에 보관하세요.</div></div><button id="downloadBackup" type="button">백업 내려받기</button></div>
     </div>
     <div class="card">
       <div class="card-h"><h2>정산 기본값</h2><span class="lbl">매달 자동으로 채워지는 값 · 달마다 덮어쓸 수 있음</span></div>
@@ -548,7 +549,7 @@ function applyServerState(state){
   cfg.defaults={rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000,...(state.cfg?.defaults||{})};
   inventory=Array.isArray(state.inventory)?state.inventory:[];
   syncRevision=state.syncRevision||"";
-  ensureAugustClose();normalizeInventory();return true;
+  normalizeInventory();return true;
 }
 function mergeNewerBrowserRecords(state){
   if(!state||typeof state!=="object")return false;
@@ -559,7 +560,7 @@ function mergeNewerBrowserRecords(state){
   for(const [mk,item] of Object.entries(state.close||{})){
     if(!allClose[mk]||+(item?.updatedAt||item?.closedAt||0)>+(allClose[mk]?.updatedAt||allClose[mk]?.closedAt||0)){allClose[mk]=item;changed=true;}
   }
-  ensureAugustClose();return changed;
+  return changed;
 }
 function showCloudState(ok,message){
   cloudConnected=!!ok;
@@ -568,11 +569,11 @@ function showCloudState(ok,message){
   if($("cSave")&&!closeLocked())$("cSave").disabled=!cloudConnected;
 }
 async function saveCloud(){
-  if(!syncKey)return false;
+  if(!syncKey)throw new Error("동기화 연결 후 저장해 주세요. 서버에 저장되지 않았습니다.");
   syncRevision=`${Date.now()}-${Math.random().toString(36).slice(2,9)}`;
   const expected=syncRevision,r=await fetch(SYNC_ENDPOINT,{method:"PUT",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({state:stateSnapshot()})});
   if(!r.ok)throw await syncError(r,"동기화하지 못했습니다.");
-  const check=await fetch(SYNC_ENDPOINT,{headers:{"X-Dashboard-Key":syncKey}});
+  const check=await fetch(SYNC_ENDPOINT,{cache:"no-store",headers:{"X-Dashboard-Key":syncKey}});
   if(!check.ok)throw new Error("저장 확인에 실패했습니다.");
   const confirmed=(await check.json()).state;
   if(confirmed?.syncRevision!==expected)throw new Error("공용 저장소에서 저장 내용을 확인하지 못했습니다.");
@@ -599,14 +600,29 @@ async function loadCloud(){
   const r=await fetch(SYNC_ENDPOINT,{cache:"no-store",headers:{"X-Dashboard-Key":syncKey}});
   if(!r.ok)throw await syncError(r,"동기화하지 못했습니다.");
   const state=(await r.json()).state;
-  if(state)applyServerState(state);else ensureAugustClose();
+  if(state)applyServerState(state);
   return state||null;
 }
 
+$("downloadBackup").onclick=async()=>{
+  if(!syncKey){toast("먼저 동기화 연결을 확인하세요.");return;}
+  const button=$("downloadBackup");button.disabled=true;
+  try{
+    const response=await fetch(SYNC_ENDPOINT,{cache:"no-store",headers:{"X-Dashboard-Key":syncKey}});
+    if(!response.ok)throw await syncError(response,"백업 데이터를 조회하지 못했습니다.");
+    const {state}=await response.json();
+    if(!state||typeof state!=="object"||Array.isArray(state))throw new Error("서버에 백업할 데이터가 없습니다.");
+    const blob=new Blob([JSON.stringify({format:"nudif-backup-v1",exportedAt:new Date().toISOString(),state},null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob),link=document.createElement("a");
+    link.href=url;link.download=`nudif-backup-${todayISO()}.json`;link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);toast("서버 데이터 백업을 내려받았습니다.");
+  }catch(e){toast(e.message||"백업에 실패했습니다.");}finally{button.disabled=false;}
+};
+
 let db=null;
-// 공개 페이지에서는 로그인 저장소를 쓸 수 없으므로, 확정한 2026년 8월 정산은 기본값으로 보관한다.
-// 이후 로그인 저장소가 연결되면 해당 데이터가 우선 적용된다.
-let cur={y:2026,m:8};
+// 기본 기준 월은 서버에서 조회한 완료 정산으로 결정한다.
+const initialDate=new Date();
+let cur={y:initialDate.getFullYear(),m:initialDate.getMonth()+1};
 let monthData={},prevMonthData={},thisMonthData={},refs=[];
 // 거래처 목록만 기본으로 제공하며, 제품·수량·금액 내역은 새 거래명세서를 올릴 때부터 저장한다.
 const vendorDirectory=[
@@ -617,23 +633,7 @@ const vendorDirectory=[
 ];
 let inventory=[];
 const INVENTORY_DATA_VERSION=3;
-const AUGUST_CLOSE_MANUAL={
-  rev_total:26672200,"rev:건한":12097600,"rev:근영":10271100,"rev:혜진":4303500,
-  rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000,
-  card_samsung:1709636,card_woori:691170,card_hana:363496,salary:2417500,common:0
-};
-function ensureAugustClose(){
-  const existing=allClose["2026-08"]||{};
-  allClose["2026-08"]={...existing,manual:{...AUGUST_CLOSE_MANUAL,...(existing.manual||{})},extras:existing.extras||[],memo:existing.memo||"",closedAt:existing.closedAt||Date.UTC(2026,7,31,12)};
-}
-let allMonths={},allClose={
-  "2026-08":{
-    manual:{...AUGUST_CLOSE_MANUAL},
-    extras:[],
-    memo:"",
-    closedAt:Date.UTC(2026,7,31,12)
-  }
-},cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000}};
+let allMonths={},allClose={},cfg={designers:["건한","근영","혜진"],salaryLabel:"혜진 월급",defaults:{rent:3300000,mgmt:242000,parking:50000,taxacct:110000,loan:1160000,vat:360000}};
 
 /* ---------- theme ---------- */
 function isDark(){const r=document.documentElement;if(r.classList.contains("t-dark"))return true;if(r.classList.contains("t-light"))return false;const t=r.getAttribute("data-theme");return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;}
