@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>살롱 매출 &amp; 레퍼런스 보드</title>
+<title>살롱 매출 보드</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -180,13 +180,6 @@ tr.dim td{opacity:.45}
 .inv-phone{font-size:.78rem;color:var(--muted)}
 .vendor-products{display:flex;flex-direction:column;gap:5px;margin-top:6px;padding-top:8px;border-top:1px solid var(--line);font-size:.82rem}
 .vendor-products span{display:flex;justify-content:space-between;gap:10px}.vendor-products span:first-child{color:var(--ink)}
-.receipt-review{display:flex;flex-direction:column;gap:10px;margin-top:12px}
-.receipt-meta{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.receipt-meta label,.receipt-line{display:flex;flex-direction:column;gap:5px;font-size:.8rem;color:var(--muted)}
-.receipt-lines{display:flex;flex-direction:column;gap:8px}
-.receipt-line{display:grid;grid-template-columns:minmax(0,1fr) 90px 130px;align-items:end;gap:8px;border-top:1px solid var(--line);padding-top:8px}
-.receipt-line label{display:flex;flex-direction:column;gap:5px;min-width:0}
-@media (max-width:760px){.receipt-meta{grid-template-columns:1fr 1fr}.receipt-meta label:first-child{grid-column:1/-1}.receipt-line{grid-template-columns:minmax(0,1fr) 78px 105px}}
 /* close form */
 .cgroup{display:flex;flex-direction:column}
 .cgroup h3{padding:4px 0 8px}
@@ -278,7 +271,7 @@ tr.dim td{opacity:.45}
 </svg>
 
 <aside class="side" id="side" aria-label="메뉴">
-  <div class="brand"><div class="mark">S</div><div><b>Salon Board</b><span>매출 · 예약 · 레퍼런스</span></div></div>
+  <div class="brand"><div class="mark">S</div><div><b>Salon Board</b><span>매출 · 예약 · 재고</span></div></div>
   <nav class="nav" id="sideNav">
     <a href="#home" data-r="home"><svg class="ico"><use href="#i-home"/></svg>홈</a>
     <div class="navsec">운영</div>
@@ -286,14 +279,13 @@ tr.dim td{opacity:.45}
     <a href="#designers" data-r="designers"><svg class="ico"><use href="#i-chart"/></svg>디자이너</a>
     <a href="#close" data-r="close"><svg class="ico"><use href="#i-pen"/></svg>월 정산 입력<span class="badge" data-b="close" hidden>!</span></a>
     <a href="#reservations" data-r="reservations"><svg class="ico"><use href="#i-cal"/></svg>예약 현황<span class="badge" data-b="resv" hidden></span></a>
-    <a href="#refs" data-r="refs"><svg class="ico"><use href="#i-img"/></svg>고객 레퍼런스<span class="badge" data-b="refs" hidden></span></a>
     <a href="#inventory" data-r="inventory"><svg class="ico"><use href="#i-up"/></svg>재고관리</a>
     <div class="navsec">데이터</div>
     <a href="#import" data-r="import"><svg class="ico"><use href="#i-up"/></svg>매출 데이터 입력</a>
     <a href="#settings" data-r="settings"><svg class="ico"><use href="#i-set"/></svg>설정</a>
   </nav>
   <button class="ghost" id="themeBtnSide" style="display:flex;align-items:center;gap:12px;justify-content:flex-start;margin-top:auto;color:var(--muted);font-weight:500"></button>
-  <div class="foot" id="sideFoot" style="margin-top:0">핸드SOS · 네이버 예약 · Jotform</div>
+  <div class="foot" id="sideFoot" style="margin-top:0">핸드SOS · 네이버 예약</div>
 </aside>
 <div class="scrim" id="scrim"></div>
 
@@ -302,7 +294,6 @@ tr.dim td{opacity:.45}
     <button id="menuBtn" aria-label="메뉴 열기"><svg class="ico"><use href="#i-menu"/></svg></button>
     <span class="tt" id="topTitle">홈</span>
     <button id="themeBtnTop" aria-label="다크 모드 전환"><svg class="ico"><use href="#i-moon"/></svg></button>
-    <button id="bellTop" aria-label="새 레퍼런스"><svg class="ico"><use href="#i-bell"/></svg><span class="dot" id="bellDot" hidden></span></button>
   </div>
 
   <!-- HOME -->
@@ -312,12 +303,10 @@ tr.dim td{opacity:.45}
       <a class="tile" href="#sales"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-chart"/></svg></div><h3>최근 정산 매출</h3></div><div class="t-v" id="hSales">₩0</div><div class="t-s" id="hSalesS">—</div></a>
       <a class="tile" href="#sales"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-chart"/></svg></div><h3>건한 · 근영 순수익</h3></div><div class="t-v" id="hToday">—</div><div class="t-s" id="hTodayS">—</div></a>
       <a class="tile" href="#reservations"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-cal"/></svg></div><h3>예약 현황</h3></div><div class="t-v" id="hResv">0명</div><div class="t-s" id="hResvS">오늘 방문 예정</div></a>
-      <a class="tile" href="#refs"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-img"/></svg></div><h3>고객 레퍼런스</h3></div><div class="t-v" id="hRefs">0건</div><div class="t-s">확인하지 않은 새 레퍼런스</div></a>
       <a class="tile" href="#import"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-up"/></svg></div><h3>매출 데이터 입력</h3></div><div class="t-v" style="font-size:1rem" id="hImport">핸드SOS 엑셀 올리기</div><div class="t-s" id="hImportS">열 지정 후 한 번에 반영</div></a>
       <a class="tile" href="#close"><div class="t-top"><div class="t-ico"><svg class="ico"><use href="#i-pen"/></svg></div><h3>월 정산</h3></div><div class="t-v" style="font-size:1rem" id="hClose">—</div><div class="t-s" id="hCloseS">월세·카드·급여 등 비용 확인</div></a>
     </div>
     <div class="grid2">
-      <div class="card"><div class="card-h"><h2>최근 레퍼런스</h2><a href="#refs" class="lbl">전체 보기 →</a></div><div class="list" id="homeRefs"></div></div>
       <div class="card"><div class="card-h"><h2>다가오는 방문</h2><a href="#reservations" class="lbl">전체 보기 →</a></div><div class="list" id="homeResv"></div></div>
     </div>
   </section>
@@ -398,17 +387,6 @@ tr.dim td{opacity:.45}
     <div class="card"><div id="resvList"></div></div>
   </section>
 
-  <!-- REFS -->
-  <section class="page" data-page="refs" hidden>
-    <div class="page-h">
-      <div><h1>고객 레퍼런스</h1><p>방문 전 고객이 올린 사진과 인스타그램 링크입니다.</p></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap"><button id="syncBtn">새로고침</button><button id="markAll">모두 확인</button></div>
-    </div>
-    <div class="status" id="syncStatus"></div>
-    <div class="segs" id="refSeg" style="align-self:flex-start"><button data-f="all" aria-pressed="true">전체</button><button data-f="new" aria-pressed="false">새 레퍼런스</button><button data-f="seen" aria-pressed="false">확인함</button></div>
-    <div class="card"><div class="list" id="refList"></div></div>
-  </section>
-
   <!-- INVENTORY -->
   <section class="page" data-page="inventory" hidden>
     <div class="page-h">
@@ -432,12 +410,6 @@ tr.dim td{opacity:.45}
     <div class="card" id="iStatementCard">
       <div class="card-h"><h2 id="iListTitle">거래명세서 내역</h2><span class="status" id="iListStatus"></span></div>
       <div class="tablebox"><table id="iTable"></table></div>
-    </div>
-    <div class="card">
-      <div class="card-h"><h2>거래명세서 사진으로 추가</h2><span class="lbl">사진 선택 → 자동 인식 → 확인 후 반영</span></div>
-      <label class="drop" for="receiptFile"><svg class="ico" style="width:28px;height:28px"><use href="#i-up"/></svg><b style="color:var(--ink)">거래명세서 사진 선택</b><span style="font-size:.85rem">JPG·PNG 사진을 올리면 상호명·전화번호·제품·수량·금액을 읽습니다.</span><input type="file" id="receiptFile" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" hidden></label>
-      <div class="status" id="receiptStatus">사진의 글자를 읽은 뒤, 반영 전 내용을 확인할 수 있습니다.</div>
-      <div class="receipt-review" id="receiptReview" hidden></div>
     </div>
     <div class="card">
       <div class="card-h"><h2>등록 거래처</h2><span class="lbl">상호명 · 전화번호</span></div>
@@ -507,14 +479,10 @@ tr.dim td{opacity:.45}
 
   <!-- SETTINGS -->
   <section class="page" data-page="settings" hidden>
-    <div class="page-h"><div><h1>설정</h1><p>화면 모드와 고객에게 보낼 링크를 관리합니다.</p></div></div>
+    <div class="page-h"><div><h1>설정</h1><p>화면 모드와 정산 기본값을 관리합니다.</p></div></div>
     <div class="card">
       <div class="setrow"><div><h3>화면 모드</h3><div class="lbl">이 기기에만 저장됩니다</div></div>
         <div class="segs" id="themeSeg"><button data-t="light" aria-pressed="false">라이트</button><button data-t="dark" aria-pressed="false">다크</button><button data-t="system" aria-pressed="true">시스템</button></div></div>
-      <div class="setrow" style="flex-direction:column;align-items:stretch"><div><h3>고객 레퍼런스 폼 링크</h3><div class="lbl">네이버 예약 확정 안내나 톡톡 메시지에 붙여 넣으세요</div></div>
-        <div class="linkbox"><code id="formUrl">https://form.jotform.com/262734878861069</code><button id="copyLink">복사</button></div>
-        <div class="lbl">예시 문구: 예약이 확정되었습니다. 원하시는 스타일 사진이나 인스타 링크를 미리 보내주세요 👉 위 링크</div></div>
-      <div class="setrow"><div><h3>Jotform 연결</h3><div class="lbl" id="jfState">확인 중…</div></div><button id="syncBtn2">지금 확인</button></div>
     </div>
     <div class="card">
       <div class="card-h"><h2>정산 기본값</h2><span class="lbl">매달 자동으로 채워지는 값 · 달마다 덮어쓸 수 있음</span></div>
@@ -539,7 +507,6 @@ tr.dim td{opacity:.45}
 <div class="toast" id="toast" hidden></div>
 
 <script>
-const FORM_ID="262734878861069";
 const $=id=>document.getElementById(id);
 const won=n=>"₩"+Math.round(n||0).toLocaleString("ko-KR");
 const pad=n=>String(n).padStart(2,"0");
@@ -636,7 +603,7 @@ async function loadCloud(){
   return state||null;
 }
 
-let db=null,mcp=null,pollT=null;
+let db=null;
 // 공개 페이지에서는 로그인 저장소를 쓸 수 없으므로, 확정한 2026년 8월 정산은 기본값으로 보관한다.
 // 이후 로그인 저장소가 연결되면 해당 데이터가 우선 적용된다.
 let cur={y:2026,m:8};
@@ -686,7 +653,7 @@ $("themeBtnTop").onclick=$("themeBtnSide").onclick=()=>applyTheme(isDark()?"ligh
 applyTheme(ls.get("theme")||"system");
 
 /* ---------- routing ---------- */
-const TITLES={home:"홈",sales:"매출·손익",designers:"디자이너",close:"월 정산 입력",reservations:"예약 현황",refs:"고객 레퍼런스",inventory:"재고관리",import:"매출 데이터 입력",settings:"설정"};
+const TITLES={home:"홈",sales:"매출·손익",designers:"디자이너",close:"월 정산 입력",reservations:"예약 현황",inventory:"재고관리",import:"매출 데이터 입력",settings:"설정"};
 function route(){
   let r=(location.hash||"#home").slice(1);
   if(r==="more"){document.body.classList.add("drawer");history.replaceState(null,"",route.last?"#"+route.last:"#home");return;}
@@ -703,7 +670,6 @@ function route(){
 addEventListener("hashchange",route);
 $("menuBtn").onclick=()=>document.body.classList.add("drawer");
 $("scrim").onclick=()=>document.body.classList.remove("drawer");
-$("bellTop").onclick=()=>{location.hash="refs";};
 function segs(id,cb){const el=$(id);el.querySelectorAll("button").forEach(b=>b.onclick=()=>{el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));cb(b.dataset.f);});}
 
 /* ---------- inventory ---------- */
@@ -726,7 +692,7 @@ function renderInventory(){
   const list=invFor();
   const rows=[...list].sort((a,b)=>String(b.date).localeCompare(String(a.date))||String(a.vendor).localeCompare(String(b.vendor)));
   $("iListTitle").textContent=`거래명세서 내역 · ${invPeriodLabel()}`;
-  $("iTable").innerHTML=`<thead><tr><th>거래일</th><th>상호 · 전화번호</th><th>제품명</th><th class="r">수량</th><th class="r">금액</th><th></th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.vendor)}<br><span class="inv-phone">${esc(x.phone||"—")}</span></td><td>${esc(x.product)}</td><td class="r">${x.qtyCheck?"확인 필요":(+x.qty||0).toLocaleString("ko-KR")}</td><td class="r">${won(x.amount)}</td><td><button class="ghost" data-idel="${esc(x.id)}" aria-label="삭제">×</button></td></tr>`).join("")||`<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">${invPeriodLabel()}에 저장된 거래명세서가 없습니다. 사진을 추가하면 이곳에 표시됩니다.</td></tr>`}</tbody>`;
+  $("iTable").innerHTML=`<thead><tr><th>거래일</th><th>상호 · 전화번호</th><th>제품명</th><th class="r">수량</th><th class="r">금액</th><th></th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.date)}</td><td>${esc(x.vendor)}<br><span class="inv-phone">${esc(x.phone||"—")}</span></td><td>${esc(x.product)}</td><td class="r">${x.qtyCheck?"확인 필요":(+x.qty||0).toLocaleString("ko-KR")}</td><td class="r">${won(x.amount)}</td><td><button class="ghost" data-idel="${esc(x.id)}" aria-label="삭제">×</button></td></tr>`).join("")||`<tr><td colspan="6" class="muted" style="text-align:center;padding:20px">${invPeriodLabel()}에 저장된 거래명세서가 없습니다. 거래명세서를 직접 입력하면 이곳에 표시됩니다.</td></tr>`}</tbody>`;
   $("iListStatus").textContent=`${invPeriodLabel()} · ${rows.length}개 품목`;
   document.querySelectorAll("[data-idel]").forEach(b=>b.onclick=()=>deleteInventory(b.dataset.idel));
 }
@@ -739,32 +705,6 @@ $("iReset").onclick=()=>{setInventoryRange("month");iVendorFilter="";iProductFil
 $("iDownload").onclick=()=>{if(!readInventoryFilters())return;const rows=[["기간",invPeriodLabel()],["거래일","상호명","전화번호","제품명","수량","금액"],...invFor().sort((a,b)=>String(a.date).localeCompare(String(b.date))).map(x=>[x.date,x.vendor,x.phone||"",x.product,x.qtyCheck?"확인 필요":x.qty||0,x.amount||0])],csv="\uFEFF"+rows.map(r=>r.map(v=>`\"${String(v).replace(/\"/g,'\"\"')}\"`).join(",")).join("\n"),a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download=`누디프_재고_${iRange.start}_${iRange.end}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};
 $("iDate").value=todayISO();
 $("iForm").addEventListener("submit",async e=>{e.preventDefault();const date=$("iDate").value,vendor=$("iVendorName").value.trim(),phone=$("iPhone").value.trim(),product=$("iProduct").value.trim(),qty=+$("iQty").value,amount=+$("iAmount").value;if(!date||!vendor||!product||!qty){$("iStatus").textContent="거래일·상호명·제품명·수량을 입력하세요.";return;}const rec={id:`inv-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,date,vendor,phone,product,qty,amount};inventory.push(rec);const d=new Date(`${date}T00:00:00`);iRange=invMonthRange(d.getFullYear(),d.getMonth());iVendorFilter="";iProductFilter="";try{await persistInventory("제품을 재고에 추가했습니다");$("iProduct").value="";$("iQty").value="";$("iAmount").value="";$("iStatus").textContent="추가 완료";}catch(err){inventory=inventory.filter(x=>x.id!==rec.id);$("iStatus").textContent="저장하지 못했습니다: "+(err.message||"");}});
-
-let receiptDraft=null;
-function receiptReview(){
-  const box=$("receiptReview"),d=receiptDraft;if(!d){box.hidden=true;return;}box.hidden=false;
-  box.innerHTML=`<div class="receipt-meta"><label>거래일<input id="rDate" type="date" value="${esc(d.date||todayISO())}"></label><label>상호명<input id="rVendor" value="${esc(d.vendor||"")}"></label><label>전화번호<input id="rPhone" value="${esc(d.phone||"")}" placeholder="없으면 비워두세요"></label></div><div class="receipt-lines">${d.items.map((x,i)=>`<div class="receipt-line"><label>제품명<input data-rproduct="${i}" value="${esc(x.product||"")}"></label><label>수량<input data-rqty="${i}" type="number" min="1" step="1" value="${esc(x.qty||1)}"></label><label>금액 (원)<input data-ramount="${i}" type="number" min="0" step="100" value="${esc(x.amount||0)}"></label></div>`).join("")}</div><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="primary" id="receiptApply" type="button">확인 후 재고에 반영</button><span class="status">수정할 부분이 있으면 고친 뒤 반영하세요.</span></div>`;
-  $("receiptApply").onclick=applyReceiptDraft;
-}
-async function applyReceiptDraft(){
-  const date=$("rDate").value,vendor=$("rVendor").value.trim(),phone=$("rPhone").value.trim();
-  const items=receiptDraft.items.map((x,i)=>({product:document.querySelector(`[data-rproduct="${i}"]`).value.trim(),qty:+document.querySelector(`[data-rqty="${i}"]`).value,amount:+document.querySelector(`[data-ramount="${i}"]`).value}));
-  if(!date||!vendor||items.some(x=>!x.product||!x.qty||x.amount<0)){toast("거래일·상호명·제품명·수량을 확인하세요.");return;}
-  const ids=[];items.forEach((x,i)=>{const rec={id:`photo-${Date.now()}-${i}`,date,vendor,phone,...x};inventory.push(rec);ids.push(rec.id);});const d=new Date(`${date}T00:00:00`);iRange=invMonthRange(d.getFullYear(),d.getMonth());iVendorFilter="";iProductFilter="";
-  try{await persistInventory(`${items.length}개 품목을 재고에 반영했습니다`);receiptDraft=null;$("receiptFile").value="";$("receiptStatus").textContent="반영 완료 · 다음 거래명세서 사진을 선택하세요.";receiptReview();}catch(e){inventory=inventory.filter(x=>!ids.includes(x.id));$("receiptStatus").textContent="저장하지 못했습니다: "+(e.message||"");}
-}
-async function readReceiptFile(file){
-  if(!syncKey){$("receiptStatus").textContent="먼저 관리 비밀번호로 동기화 연결을 확인하세요.";return;}
-  $("receiptStatus").textContent="사진에서 거래명세서를 읽는 중입니다…";receiptDraft=null;receiptReview();
-  try{
-    let dataUrl;
-    if(!/heic|heif/i.test(file.type+file.name)){const bitmap=await createImageBitmap(file),scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));const c=document.createElement("canvas");c.width=Math.max(1,Math.round(bitmap.width*scale));c.height=Math.max(1,Math.round(bitmap.height*scale));c.getContext("2d").drawImage(bitmap,0,0,c.width,c.height);dataUrl=c.toDataURL("image/jpeg",.84);bitmap.close?.();}
-    else dataUrl=await new Promise((ok,bad)=>{const r=new FileReader;r.onload=()=>ok(r.result);r.onerror=bad;r.readAsDataURL(file);});
-    const r=await fetch("https://rho-eight-83.vercel.app/api/receipt",{method:"POST",headers:{"Content-Type":"application/json","X-Dashboard-Key":syncKey},body:JSON.stringify({image:dataUrl})});
-    const body=await r.json().catch(()=>({}));if(!r.ok)throw new Error(body.error||"사진을 읽지 못했습니다.");receiptDraft=body.receipt;$("receiptStatus").textContent=`${receiptDraft.items.length}개 품목을 인식했습니다. 아래 내용을 확인하세요.`;receiptReview();
-  }catch(e){$("receiptStatus").textContent=e.message||"사진을 읽지 못했습니다. JPG 또는 PNG로 다시 시도하세요.";}
-}
-$("receiptFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)readReceiptFile(f);});
 
 /* ---------- sales ---------- */
 function sums(days){let nv=0,wk=0,nn=0,wn=0,open=0;for(const k in(days||{})){const d=days[k],a=d.naver?.amt||0,b=d.walkin?.amt||0;nv+=a;wk+=b;nn+=d.naver?.n||0;wn+=d.walkin?.n||0;if(a+b>0)open++;}return {nv,wk,nn,wn,open,total:nv+wk,count:nn+wn};}
@@ -1048,10 +988,7 @@ function renderHome(){
   $("hImportS").textContent=thisMonthData.updatedAt?`마지막 반영 ${new Date(thisMonthData.updatedAt).toLocaleDateString("ko-KR",{month:"short",day:"numeric"})}`:"열 지정 후 한 번에 반영";
   const tdy=refs.filter(r=>visitISO(r)===todayISO());$("hResv").textContent=`${tdy.length}명`;
   const up=upcoming();$("hResvS").textContent=up.length?`오늘 방문 예정 · 앞으로 ${up.length}명`:"오늘 방문 예정";
-  $("hRefs").textContent=`${refs.filter(r=>!r.seen).length}건`;
-  $("homeRefs").innerHTML=refs.slice(0,4).map(refItem).join("")||`<div class="empty">아직 들어온 레퍼런스가 없습니다</div>`;
   $("homeResv").innerHTML=up.slice(0,4).map(resvItem).join("")||`<div class="empty">예정된 방문이 없습니다</div>`;
-  bindSeen();
 }
 
 /* ---------- references & reservations ---------- */
@@ -1060,33 +997,16 @@ function visitISO(r){const m=String(r.date||"").match(/(\d{4})\D{0,3}(\d{1,2})\D
 function timeKey(r){const m=String(r.time||"").match(/(\d{1,2}):(\d{2})\s*(AM|PM|오전|오후)?/i);if(!m)return"99:99";let h=+m[1];if(/PM|오후/i.test(m[3]||"")&&h<12)h+=12;if(/AM|오전/i.test(m[3]||"")&&h===12)h=0;return `${pad(h)}:${m[2]}`;}
 function upcoming(){const t=todayISO();return refs.filter(r=>visitISO(r)>=t).sort((a,b)=>(visitISO(a)+timeKey(a)).localeCompare(visitISO(b)+timeKey(b)));}
 const initial=n=>(String(n||"?").trim()[0]||"?").toUpperCase();
-function refItem(r){
-  const photos=(r.photos||[]).map(safeUrl).filter(Boolean),link=safeUrl(r.link);
-  return `<div class="item"><div class="avatar">${esc(initial(r.name))}</div><div style="min-width:0">
-    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center"><span class="name">${esc(r.name||"이름 없음")}</span>${r.seen?"":`<span class="pill new">NEW</span>`}${r.service?`<span class="pill">${esc(r.service)}</span>`:""}</div>
-    <div class="meta">방문 ${esc([r.date,r.time].filter(Boolean).join(" ")||"미기재")}${r.phone?` · ${esc(r.phone)}`:""}</div>
-    ${photos.length||link?`<div class="chips">${photos.map((p,i)=>`<a href="${esc(p)}" target="_blank" rel="noopener">사진 ${i+1}</a>`).join("")}${link?`<a href="${esc(link)}" target="_blank" rel="noopener">${/instagram/i.test(link)?"인스타그램":"참고 링크"}</a>`:""}</div>`:""}
-    ${r.notes?`<div class="note">${esc(r.notes)}</div>`:""}
-  </div>${r.seen?`<span class="lbl">확인함</span>`:`<button data-seen="${esc(r.id)}" style="min-height:34px;padding:4px 10px;font-size:.82rem">확인</button>`}</div>`;
-}
 function resvItem(r){
   const v=visitISO(r),isT=v===todayISO(),has=(r.photos||[]).length||r.link;
   return `<div class="item"><div class="avatar">${esc(initial(r.name))}</div><div style="min-width:0"><span class="name">${esc(r.name||"이름 없음")}</span>
     <div class="meta">${esc(r.service||"시술 미기재")}${r.phone?` · ${esc(r.phone)}`:""}</div></div>
     <div style="text-align:right"><div class="num" style="font-weight:600">${esc(r.time||"시간 미정")}</div>${isT?`<span class="pill warn">오늘</span>`:has?`<span class="pill">레퍼런스 있음</span>`:""}</div></div>`;
 }
-let refFilter="all",resvFilter="upcoming";
-function renderRefs(){
-  const unseen=refs.filter(r=>!r.seen).length;
-  document.querySelectorAll('[data-b="refs"]').forEach(b=>{b.hidden=!unseen;b.textContent=unseen;});
-  $("bellDot").hidden=!unseen;
-  const tdy=refs.filter(r=>visitISO(r)===todayISO()).length;
-  document.querySelectorAll('[data-b="resv"]').forEach(b=>{b.hidden=!tdy;b.textContent=tdy;});
-  const list=refs.filter(r=>refFilter==="all"||(refFilter==="new"?!r.seen:r.seen));
-  $("refList").innerHTML=list.map(refItem).join("")||`<div class="empty">${refs.length?"해당하는 레퍼런스가 없습니다":"아직 들어온 레퍼런스가 없습니다. 설정에서 고객 링크를 복사해 네이버 예약 안내에 넣어 주세요."}</div>`;
-  renderResv(); renderHome(); bindSeen();
-}
+let resvFilter="upcoming";
 function renderResv(){
+  const todayCount=refs.filter(r=>visitISO(r)===todayISO()).length;
+  document.querySelectorAll('[data-b="resv"]').forEach(b=>{b.hidden=!todayCount;b.textContent=todayCount;});
   const t=todayISO();let list;
   if(resvFilter==="today")list=refs.filter(r=>visitISO(r)===t).sort((a,b)=>timeKey(a).localeCompare(timeKey(b)));
   else if(resvFilter==="past")list=refs.filter(r=>visitISO(r)&&visitISO(r)<t).sort((a,b)=>(visitISO(b)+timeKey(b)).localeCompare(visitISO(a)+timeKey(a)));
@@ -1095,60 +1015,7 @@ function renderResv(){
   const groups={};list.forEach(r=>{(groups[visitISO(r)]=groups[visitISO(r)]||[]).push(r);});
   $("resvList").innerHTML=Object.keys(groups).map(k=>{const d=new Date(k+"T00:00");const lab=k===t?"오늘":d.toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"short"});return `<div class="daygroup"><div class="dh">${lab} · ${groups[k].length}명</div><div class="list">${groups[k].map(resvItem).join("")}</div></div>`;}).join("");
 }
-function bindSeen(){document.querySelectorAll("[data-seen]").forEach(b=>b.onclick=()=>markSeen(b.dataset.seen));}
-async function markSeen(id){if(!db)return;try{await db.doc("refs/"+id).update({seen:true});}catch{toast("저장하지 못했습니다");}}
-$("markAll").onclick=async()=>{for(const r of refs.filter(r=>!r.seen))await markSeen(r.id);};
-segs("refSeg",f=>{refFilter=f;renderRefs();});
 segs("resvSeg",f=>{resvFilter=f;renderResv();});
-$("copyLink").onclick=async()=>{const t=$("formUrl").textContent;try{await navigator.clipboard.writeText(t);toast("링크를 복사했습니다");}catch{const r=document.createRange();r.selectNodeContents($("formUrl"));const s=getSelection();s.removeAllRanges();s.addRange(r);toast("링크를 선택했습니다. 복사하세요");}};
-
-/* Jotform → refs */
-function collectSubs(node,out=[]){
-  if(Array.isArray(node)){node.forEach(n=>collectSubs(n,out));return out;}
-  if(node&&typeof node==="object"){const id=node.id??node.submission_id??node.submissionId;
-    if(id&&(node.answers||node.created_at||node.createdAt||node.fields))out.push(node);else for(const k in node)collectSubs(node[k],out);}
-  return out;
-}
-function flatten(v,label,acc){
-  if(v==null||v==="")return;
-  if(Array.isArray(v)){v.forEach(x=>flatten(x,label,acc));return;}
-  if(typeof v==="object"){
-    const lab=v.text||v.label||v.question||label;
-    if("answer" in v){flatten(v.prettyFormat||v.answer,lab,acc);return;}
-    if("value" in v&&("text" in v||"label" in v||"question" in v)){flatten(v.value,lab,acc);return;}
-    for(const k in v)flatten(v[k],/^\d+$/.test(k)?label:(label?label+" "+k:k),acc);return;
-  }
-  acc.push([String(label||""),String(v)]);
-}
-function toRef(sub){
-  const acc=[];flatten(sub.answers||sub.fields||sub,"",acc);
-  const get=re=>{const f=acc.find(([k])=>re.test(k));return f?f[1]:"";};
-  const urls=acc.flatMap(([,v])=>v.match(/https?:\/\/[^\s"'<>,]+/g)||[]);
-  const photos=[...new Set(urls.filter(u=>/\/uploads\/|\.(jpe?g|png|heic|webp|gif)(\?|$)/i.test(u)))];
-  const link=urls.find(u=>/instagram\.com|instagr\.am/i.test(u))||(get(/인스타|링크|link|url/i).match(/https?:\/\/\S+/)||[""])[0];
-  return {id:String(sub.id??sub.submission_id??sub.submissionId),name:get(/이름|성함|name/i).replace(/\s+/g," ").trim(),
-    phone:get(/연락처|전화|phone/i),date:get(/날짜|date/i),time:get(/시간|time/i),service:get(/시술|service/i),notes:get(/요청|메모|note/i),
-    photos,link:link||"",submittedAt:Date.parse(sub.created_at||sub.createdAt||"")||Date.now(),seen:false};
-}
-async function sync(){
-  $("syncStatus").textContent="새 레퍼런스 확인 중…";
-  try{
-    mcp=mcp||await claude.use("mcp");
-    if(!mcp){$("syncStatus").textContent="이 화면에서는 Jotform에 연결할 수 없습니다. 아래는 마지막으로 가져온 내용입니다.";$("jfState").textContent="연결할 수 없음";return;}
-    const res=await mcp.callTool("Jotform","list_submissions",{form_ids:[FORM_ID],user_query:"list all submissions",filter:{date_filter:[],is_filtered_by_rules:false},limit:100});
-    const subs=collectSubs(res.payload),known=new Set(refs.map(r=>r.id));let added=0;
-    for(const s of subs){const r=toRef(s);if(!r.id||known.has(r.id))continue;if(db)await db.doc("refs/"+r.id).set(r);added++;}
-    const tm=new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
-    $("syncStatus").textContent=`마지막 확인 ${tm} · ${added?`새 레퍼런스 ${added}건`:"새 레퍼런스 없음"} · 열어 두면 2분마다 자동 확인`;
-    $("jfState").textContent=`연결됨 · 마지막 확인 ${tm}`;
-    if(!pollT)pollT=setInterval(()=>{if(document.visibilityState==="visible")sync();},120000);
-    if(added)toast(`새 고객 레퍼런스 ${added}건이 도착했습니다`);
-  }catch(e){const c=e&&e.code;
-    const msg=c==="server_not_connected"?"Jotform이 연결되어 있지 않습니다. claude.ai 설정 → 커넥터에서 Jotform을 연결하세요.":(c==="not_granted"||c==="denied")?"Jotform 접근을 허용해야 새 레퍼런스를 가져올 수 있습니다.":"Jotform을 확인하지 못했습니다: "+(e.message||c||"알 수 없는 오류");
-    $("syncStatus").textContent=msg;$("jfState").textContent=msg;}
-}
-$("syncBtn").onclick=sync;$("syncBtn2").onclick=sync;
-
 /* ---------- import: mark columns ---------- */
 const ROLES=[["","무시"],["date","날짜"],["amount","금액"],["channel","채널"],["designer","담당 디자이너"],["count","건수"],["client","고객명"]];
 let sheetRows=[],hdrIdx=0,roles=[],chMap={},savedCfg=null;
@@ -1270,7 +1137,7 @@ $("impManual").addEventListener("submit",async e=>{
 /* ---------- boot ---------- */
 const recoveredBrowserState=readBrowserState();
 setCurrentToLatestClosed();
-renderDefs();route();renderSales();renderPL();renderDesigners();renderRefs();renderInventory();
+renderDefs();route();renderSales();renderPL();renderDesigners();renderResv();renderInventory();
 (async()=>{
   try{
     let migrated=false;
@@ -1287,7 +1154,6 @@ renderDefs();route();renderSales();renderPL();renderDesigners();renderRefs();ren
   savedCfg=JSON.parse(ls.get("nudif-import-config")||"null");
   setCurrentToLatestClosed();subscribeMonth();renderHome();renderDefs();renderDesigners();renderInventory();
   if((location.hash||"#home")==="#close"){closeInitialized=false;renderClose(true);}
-  $("syncStatus").textContent="레퍼런스 동기화는 Jotform 연결 후 사용할 수 있습니다.";$("jfState").textContent="아직 확인하지 않음";
 })();
 </script>
 </body>
